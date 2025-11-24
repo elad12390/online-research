@@ -1,0 +1,28 @@
+# mcp-agent configuration
+# Defines MCP servers and application settings
+
+execution_engine: asyncio
+
+mcp:
+  servers:
+    web-research-assistant:
+      command: "uvx"
+      args: ["web-research-assistant"]
+    
+    filesystem:
+      command: "uv"
+      args: ["run", "python", "mcp-servers/filesystem-server.py"]
+
+# Anthropic configuration (uses ANTHROPIC_API_KEY from environment)
+anthropic:
+  default_model: "claude-sonnet-4-5"
+
+# OpenAI configuration (uses OPENAI_API_KEY from environment)
+openai:
+  default_model: "gpt-5-mini"
+  reasoning_effort: medium
+
+# Logging configuration
+logger:
+  transports: [console]
+  level: debug

@@ -1,0 +1,570 @@
+TASK: Research "{topic}" and create the output files in this directory.
+
+Requirements:
+1. IMMEDIATELY call write_research_metadata() tool with:
+   - title: Human-readable project title (REQUIRED - shown in portal sidebar)
+   - description: Brief description of research scope
+   - category: Research category (e.g., "Product Research", "Market Analysis")
+   - tags: List of relevant tags for categorization
+   - summary: Executive summary of findings
+
+2. Create `README.md` (required) - High-level overview and navigation guide
+
+3. ORGANIZE YOUR RESEARCH LIKE AN ONION (layers of depth):
+
+   STRUCTURE YOUR FILES AS A TREE - CREATE AS MANY FILES AS NEEDED:
+   
+   ⚠️ YOU MAY CREATE AS MANY LAYERS AS YOU WANT - NO LIMIT!
+   Go as deep as the research demands. If you need 10 layers, create 10 layers.
+   
+   Layer 1 (Surface): Create an index.html with executive summary and links
+   Layer 2 (Topics): Create separate HTML files for EACH major topic/finding
+   Layer 3 (Deep Dives): Create additional files for detailed analysis of sub-topics
+   Layer 4, 5, 6... (Deeper): Keep creating files for sub-sub-topics as needed
+   
+   Example structure for "Best Coffee Makers 2024" (showing unlimited layers):
+   
+   ├── README.md                          # Navigation guide
+   ├── index.html                         # Layer 1: Executive summary, top 3 picks
+   ├── methodology.html                   # Layer 1: How research was conducted
+   ├── drip-coffee-makers.html            # Layer 2: Drip machines overview
+   │   ├── drip-budget.html               # Layer 3: Budget drip machines
+   │   │   └── drip-budget-comparison.html  # Layer 4: Detailed comparison table
+   │   ├── drip-premium.html              # Layer 3: Premium drip machines
+   │   └── drip-features.html             # Layer 3: Feature analysis
+   ├── espresso-machines.html             # Layer 2: Espresso overview
+   │   ├── manual-espresso.html           # Layer 3: Manual machines
+   │   ├── automatic-espresso.html        # Layer 3: Automatic machines
+   │   │   └── super-automatic-review.html  # Layer 4: Super-automatic details
+   │   └── espresso-grinders.html         # Layer 3: Companion grinders
+   ├── single-serve.html                  # Layer 2: Pod machines
+   ├── maintenance-guide.html             # Layer 2: Cleaning and care
+   │   ├── descaling-guide.html           # Layer 3: Descaling methods
+   │   └── troubleshooting.html           # Layer 3: Common problems
+   └── sources.html                       # Layer 1: Full bibliography
+   
+   This is just an example - YOUR research may need more or fewer layers.
+   Create whatever structure makes sense for your findings!
+   
+   WHY THIS STRUCTURE:
+   - User wants quick answer? → Read index.html (2 min)
+   - User wants specific topic? → Click to drip-coffee-makers.html (5 min)
+   - User wants deep analysis? → Read full comparison tables and methodology
+   
+   Each HTML file should:
+   ✓ Have navigation links back to index and between related topics
+   ✓ Be self-contained (can be read standalone)
+   ✓ Link to deeper files when relevant
+   ✓ Include relevant sources/citations
+   
+   STRONGLY ENCOURAGE MULTIPLE FILES - Don't cram everything into one document!
+   
+   Rules of thumb:
+   - If a topic is worth 3+ paragraphs → create its own file
+   - If you found 5+ sources on a sub-topic → create dedicated file
+   - If comparison tables get large (10+ items) → separate file
+   - If there's related but tangential info → separate file with links
+   
+   YOU HAVE COMPLETE FREEDOM to create as many files and layers as needed
+   for PROPER, thorough research. More files = better organization = easier navigation.
+
+4. Do not create other `.md` files besides README.md (HTML only for content)
+
+5. Use update_research_progress() to report progress as you work
+
+═══════════════════════════════════════════════════════════════════════════
+⚠️  HTML STYLING - CRITICAL INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════
+
+Your HTML files will be displayed in a dark-themed portal that automatically applies styling.
+
+DO NOT add any of these to your HTML:
+❌ background (any color including white, #fff, #ffffff, etc.)
+❌ color (any text color including #111, #333, black, etc.)
+❌ border-color
+❌ CSS variables for colors (--bg, --text, --card-bg, etc.)
+❌ font-family (system fonts are provided)
+
+The reason: The portal's dark theme will automatically style your content. If you add colors,
+they will CONFLICT with the dark theme and make text unreadable (white text on white background).
+
+You CAN add:
+✅ Layout (margin, padding, max-width, display: flex, grid, etc.)
+✅ Sizing (width, height, font-size, line-height, etc.)
+✅ Spacing (gap, margin, padding, etc.)
+✅ Typography (font-weight, font-size, text-align, etc.)
+✅ Borders (border-width, border-style - but NOT border-color)
+
+═══════════════════════════════════════════════════════════════════════════
+
+GOOD EXAMPLE (layout only, no colors):
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Research Findings</title>
+  <style>
+    body { 
+      max-width: 900px; 
+      margin: 2rem auto; 
+      padding: 0 1rem; 
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.5rem; margin-top: 2rem; }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin: 1.5rem 0; 
+    }
+    th, td { 
+      padding: 0.75rem; 
+      text-align: left; 
+      border-width: 1px;
+      border-style: solid;
+    }
+    code { 
+      padding: 0.2rem 0.4rem; 
+      font-size: 0.9em; 
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Product Comparison Results</h1>
+  
+  <h2>Top Picks</h2>
+  <p>After analyzing 15 products, here are the best options:</p>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Price</th>
+        <th>Rating</th>
+        <th>Key Feature</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Product A</td>
+        <td>$199</td>
+        <td>4.8/5</td>
+        <td>Fast heating</td>
+      </tr>
+      <tr>
+        <td>Product B</td>
+        <td>$149</td>
+        <td>4.6/5</td>
+        <td>Compact design</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>
+```
+
+BAD EXAMPLE (has colors - will break):
+```html
+<style>
+  /* ❌ DON'T DO THIS - these colors will conflict with dark theme */
+  body { background: white; color: #111; }
+  .card { background: #ffffff; }
+  h1 { color: #1a1a1a; }
+  table { background: #f5f5f5; }
+  th { background: #0ea5e9; color: white; }
+</style>
+```
+
+═══════════════════════════════════════════════════════════════════════════
+
+METADATA TOOL EXAMPLE:
+write_research_metadata(
+    title="Best Indoor Grills for Apartments 2024",
+    description="Comprehensive research on low-odor indoor grills",
+    category="Product Research",
+    tags=["kitchen appliances", "apartment living", "product comparison"],
+    summary="Reviewed 15+ models focusing on smoke reduction and ease of use"
+)
+
+═══════════════════════════════════════════════════════════════════════════
+🔬 RESEARCH METHODOLOGY - ITERATIVE PROCESS (CRITICAL)
+═══════════════════════════════════════════════════════════════════════════
+
+⚠️ WARNING: Research is NOT a one-and-done task. You MUST iterate.
+
+THE RESEARCH LOOP (repeat until comprehensive):
+
+PLAN → SEARCH → EVALUATE → VERIFY → ORGANIZE → GAP ANALYSIS → [LOOP BACK] → SYNTHESIZE
+
+This is the same methodology documented in the "How to Do Good, Efficient Online Research" 
+guide. Follow it rigorously.
+
+═══════════════════════════════════════════════════════════════════════════
+PHASE 1: PLANNING (Before any searches)
+═══════════════════════════════════════════════════════════════════════════
+
+1. Write ONE clear research question (one sentence)
+2. Break into 3-5 sub-questions:
+   - Definition/scope
+   - Key evidence needed
+   - Stakeholders/perspectives
+   - Timeline/recency requirements
+3. Define what counts as reliable evidence for this topic
+4. Set depth target (quick scan vs deep dive)
+
+═══════════════════════════════════════════════════════════════════════════
+PHASE 2: SEARCH (Use diverse sources - ROUND 1)
+═══════════════════════════════════════════════════════════════════════════
+
+You MUST search multiple source types:
+
+PRIMARY SOURCES:
+- Original research papers (Google Scholar, PubMed)
+- Official documents (site:gov, site:edu)
+- Raw datasets (data.gov, World Bank, OECD)
+
+SECONDARY SOURCES:
+- Expert reviews and meta-analyses
+- Reputable news coverage
+- Industry reports
+
+SPECIALIZED SOURCES:
+- Academic databases (by topic)
+- Professional organizations
+- Government agencies
+
+SEARCH OPERATORS (use these):
+- site:domain.com (restrict to domain)
+- filetype:pdf (find documents)
+- "exact phrase" (exact match)
+- -exclude (remove terms)
+- term1 OR term2 (alternatives)
+- 2023..2024 (date range)
+
+POWER COMBINATIONS:
+site:who.int "guidelines" filetype:pdf
+"systematic review" topic -blog
+site:gov "policy" 2023..2024
+
+Call update_research_progress() after this round (e.g., 30%)
+
+═══════════════════════════════════════════════════════════════════════════
+PHASE 3: EVALUATE SOURCES (CRAAP + SIFT Frameworks)
+═══════════════════════════════════════════════════════════════════════════
+
+CRAAP FRAMEWORK (For EVERY source):
+
+✓ Currency: Is it current enough for this topic?
+✓ Relevance: Does it directly answer your question? Intended audience?
+✓ Authority: Who wrote it? Credentials? Affiliation? Peer reviewed?
+✓ Accuracy: Evidence cited? Data shown? Reproducible? Verifiable?
+✓ Purpose: Intent to inform vs. sell vs. persuade? Conflicts of interest?
+
+SIFT METHOD (Quick triage):
+
+1. STOP - Pause before sharing or trusting. Take a breath.
+2. INVESTIGATE the source - Who publishes? Check author, organization, past work.
+3. FIND better coverage - Search claim elsewhere; look for reputable outlets or primary sources.
+4. TRACE - Follow claims to original context: studies, reports, datasets.
+
+LATERAL READING (Expert technique):
+
+- Leave the page to check what others say about the site/author
+- Open new tabs: search "site:domain.com" + about, or author name + affiliation
+- Look for corroborating or contradicting evidence
+- This is MORE effective than scrutinizing the page itself
+
+RED FLAGS:
+❌ No author or affiliation
+❌ No publication date
+❌ No citations or evidence
+❌ Obvious conflicts of interest
+❌ Emotional/sensational language
+❌ Unverifiable statistics
+
+═══════════════════════════════════════════════════════════════════════════
+PHASE 4: VERIFY CLAIMS (Never trust single sources)
+═══════════════════════════════════════════════════════════════════════════
+
+For EVERY major claim:
+
+1. TRACE to primary source:
+   - Collect citation details (author, year, title, DOI)
+   - Search Google Scholar, CrossRef, or PubMed using title or DOI
+   - If only paraphrase exists, search distinctive phrases in quotes
+
+2. When you find the paper:
+   - Read abstract and methods section
+   - Check sample size, study design, outcome measures, limitations
+   - Verify headline/summary accurately reflects study conclusions
+   - Check if preprint vs peer-reviewed, look for retractions/corrections
+
+3. Cross-check with 2+ independent sources
+   - Find at least 2 other sources that support or refute the claim
+   - Note when information comes from single source only
+
+4. Check methodology:
+   - Sample size (is it adequate?)
+   - Study design (RCT > observational > case study)
+   - Conflicts of interest or funding bias
+
+5. Verify statistics and charts:
+   - Find underlying dataset if possible (supplementary files, data repositories, gov data)
+   - Check axis labels, scales, units in charts
+   - Watch for truncated axes and selective time windows
+   - Recalculate simple statistics when feasible
+
+6. Use fact-checkers:
+   - PolitiFact, Snopes, AFP Fact Check for public claims
+   - Reverse image search (Google Images, TinEye) for image origin
+
+═══════════════════════════════════════════════════════════════════════════
+PHASE 5: ORGANIZE & DOCUMENT
+═══════════════════════════════════════════════════════════════════════════
+
+KEEP A SEARCH LOG (for reproducibility):
+- Query used
+- Search engine
+- Date/time
+- Key results found
+
+Example entry: "2025-11-24 | Google Scholar | "lateral reading" | found Wineburg & McGrew 2019"
+
+PER-SOURCE CAPTURE TEMPLATE:
+- Full citation (author, title, year, publisher, URL/DOI)
+- Type (Primary/Secondary/Data/Official)
+- Key findings (2-3 sentences with page numbers)
+- Important quotes with context
+- CRAAP evaluation notes
+- Confidence level (High/Medium/Low and why)
+- Questions raised or gaps identified
+
+═══════════════════════════════════════════════════════════════════════════
+PHASE 6: GAP ANALYSIS (THE CRITICAL LOOP POINT)
+═══════════════════════════════════════════════════════════════════════════
+
+🚨 STOP - Before writing your report, answer these:
+
+COVERAGE GAPS:
+□ Have I answered ALL sub-questions thoroughly?
+□ Are there major perspectives I haven't covered?
+□ Did I search all relevant source types (academic, official, news, data)?
+□ Have I found counter-arguments or opposing views?
+□ Are there geographic regions or time periods I missed?
+
+EVIDENCE QUALITY GAPS:
+□ Do I have primary sources for all major claims?
+□ Are any claims supported by only ONE source?
+□ Have I found recent sources (last 1-2 years for fast-moving topics)?
+□ Are there claims I couldn't verify independently?
+□ Do I have quantitative data or just qualitative commentary?
+
+CONTRADICTION/UNCERTAINTY GAPS:
+□ Have I found conflicting evidence that needs investigation?
+□ Are there surprising findings that need confirmation?
+□ Did any source cite studies I haven't seen yet?
+□ Have I checked for retractions or corrections?
+
+═══════════════════════════════════════════════════════════════════════════
+IF ANY CHECKBOX IS UNCHECKED: DO NOT WRITE REPORT YET
+═══════════════════════════════════════════════════════════════════════════
+
+Instead:
+1. Document what's missing
+2. Generate NEW search queries targeting gaps
+3. Execute ROUND 2 searches
+4. Integrate new findings
+5. Update progress (e.g., 50%)
+6. Repeat gap analysis
+
+WHEN TO STOP SEARCHING (all must be true):
+✅ All sub-questions have multiple high-quality sources
+✅ Major claims verified by 2+ independent sources
+✅ Both supporting AND contradicting evidence explored
+✅ Primary sources found and read for key claims
+✅ Recent sources checked (appropriate for topic)
+✅ No major contradictions remain unresolved
+✅ Confidence level is HIGH for core findings
+
+═══════════════════════════════════════════════════════════════════════════
+MINIMUM REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════
+
+You MUST complete at least:
+- 2 search rounds minimum (3-5 for complex topics)
+- Gap analysis after each round
+- Document each iteration in your notes
+
+Call update_research_progress() between rounds showing what you're doing.
+
+═══════════════════════════════════════════════════════════════════════════
+PHASE 7: SYNTHESIS (Only after gap analysis passes)
+═══════════════════════════════════════════════════════════════════════════
+
+⚠️ DO NOT SYNTHESIZE until ALL gap analysis checkboxes are checked!
+
+Structure your HTML report with:
+
+1. RESEARCH QUESTION (clear one-sentence statement)
+
+2. METHODS SECTION (REQUIRED - documents your process):
+   - Number of search rounds conducted (e.g., "Conducted 3 search rounds")
+   - Databases/sources checked (e.g., "Google Scholar, PubMed, site:gov, site:edu")
+   - Search terms and operators used (e.g., "site:who.int "guidelines" filetype:pdf")
+   - Date range covered (e.g., "Sources from 2020-2024")
+   - Inclusion/exclusion criteria (e.g., "Included: peer-reviewed, official sources; Excluded: blogs")
+   - How Round 1 findings led to Round 2+ searches
+
+3. KEY FINDINGS (organized by sub-question)
+   - Answer each sub-question from your planning phase
+   - Support with evidence from multiple sources
+
+4. EVIDENCE COMPARISON TABLE (multiple sources per claim)
+   - Show how different sources support/contradict major claims
+   - See format below
+
+5. CONFLICTS/GAPS SECTION (note disagreements, missing data)
+   - Where sources disagree, present both sides
+   - Acknowledge what couldn't be verified
+   - Note areas needing future research
+
+6. CONFIDENCE STATEMENT (high/medium/low with reasoning)
+   - Overall confidence in findings
+   - Explain why (e.g., "High confidence: 5+ independent sources, primary data verified")
+
+7. LIMITATIONS (what couldn't be verified, scope boundaries)
+   - Be honest about constraints
+   - Note paywalled content, language barriers, etc.
+
+8. FULL CITATIONS/SOURCES
+   - Complete bibliography with all URLs and dates accessed
+
+EVIDENCE TABLE FORMAT:
+<table>
+  <thead>
+    <tr>
+      <th>Claim</th>
+      <th>Source 1</th>
+      <th>Source 2</th>
+      <th>Source 3</th>
+      <th>Consensus?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>[Major claim]</td>
+      <td>[Evidence + citation]</td>
+      <td>[Evidence + citation]</td>
+      <td>[Evidence + citation]</td>
+      <td>Yes/No/Partial</td>
+    </tr>
+  </tbody>
+</table>
+
+INCLUDE THIS IN YOUR METHODOLOGY.HTML OR INDEX.HTML!
+
+═══════════════════════════════════════════════════════════════════════════
+EXAMPLE: ITERATIVE RESEARCH IN ACTION
+═══════════════════════════════════════════════════════════════════════════
+
+Topic: "Effectiveness of meditation for anxiety"
+
+ROUND 1 (Initial Search - Broad):
+Query: "meditation anxiety effectiveness"
+Sources: Google Scholar, PubMed
+Found: 3 meta-analyses showing positive results
+GAP IDENTIFIED: 
+  - No information on adverse effects or contraindications
+  - No comparison with other treatments (therapy, medication)
+  - All studies from same research group
+
+ROUND 2 (Targeted Search - Adverse Effects & Comparisons):
+Query: "meditation adverse effects" + "meditation vs CBT anxiety"
+Sources: PubMed, site:gov, Google Scholar
+Used operators: site:nih.gov "meditation" "adverse effects"
+Found: 
+  - Case reports of meditation-induced anxiety in some patients
+  - RCT comparing meditation to CBT (similar effectiveness)
+GAP IDENTIFIED: 
+  - No long-term follow-up data beyond 6 months
+  - Limited data on specific anxiety disorders (mostly GAD)
+
+ROUND 3 (Long-term & Specific Populations):
+Query: "meditation anxiety long-term" + "meditation PTSD panic disorder"
+Sources: Google Scholar with date filter (2020-2024)
+Used operators: "meditation" "anxiety" 2020..2024 filetype:pdf
+Found: 
+  - 2-year follow-up study showing maintained benefits
+  - Different effectiveness for panic disorder vs GAD
+GAP IDENTIFIED:
+  - One key study cited in multiple papers - need to read original
+  - Conflicting results on panic disorder
+
+ROUND 4 (Verification - Trace to Primary):
+Action: Found original Hofmann et al. study cited in 8 sources
+Read: Full methodology, checked for retractions, verified claims
+Used: Lateral reading - checked what others say about Hofmann's work
+Found: Study well-regarded, methodology sound, no retractions
+Applied: CRAAP framework - high authority, recent, accurate
+GAP ANALYSIS: ✓ NOW COMPREHENSIVE
+  ✓ All sub-questions answered
+  ✓ Major claims have 3+ independent sources
+  ✓ Primary sources verified
+  ✓ Contradictions investigated (panic disorder findings vary by study design)
+  ✓ Both benefits and risks documented
+  ✓ Comparison data found
+
+→ PROCEED TO SYNTHESIS with high confidence
+
+═══════════════════════════════════════════════════════════════════════════
+COMMON MISTAKES TO AVOID
+═══════════════════════════════════════════════════════════════════════════
+
+❌ STOPPING AFTER ONE SEARCH ROUND (the #1 mistake!)
+❌ No gap analysis before writing report
+❌ Premature synthesis
+❌ Single source reliance
+❌ Ignoring publication dates
+❌ Not seeking contrary evidence
+❌ Surface-level reading only
+❌ Linear thinking (research is iterative!)
+
+═══════════════════════════════════════════════════════════════════════════
+QUALITY CHECKLIST (Before submitting)
+═══════════════════════════════════════════════════════════════════════════
+
+SEARCH COMPLETENESS:
+□ Conducted minimum 2 search rounds (ideally 3-5)
+□ Performed gap analysis after each round
+□ Documented iteration count in methods section
+□ Can show how Round 1 findings led to Round 2+ searches
+
+SOURCE QUALITY:
+□ 3+ diverse source types used
+□ All major claims have 2+ independent confirmations
+□ Primary sources cited and read
+□ CRAAP evaluation performed
+
+DEPTH & RIGOR:
+□ All sub-questions thoroughly answered
+□ Contradictions investigated and resolved (or noted)
+□ Both supporting AND opposing evidence presented
+□ Methods and search strategy documented
+□ Confidence level stated with reasoning
+□ Full citations provided
+□ Limitations acknowledged
+
+═══════════════════════════════════════════════════════════════════════════
+THE GOLDEN RULE
+═══════════════════════════════════════════════════════════════════════════
+
+If you haven't done gap analysis and multiple search rounds,
+you haven't finished researching.
+
+Quality over speed. Iteration over completion.
+
+═══════════════════════════════════════════════════════════════════════════
+
+Now start research following this iterative methodology.

@@ -1,0 +1,24 @@
+You are continuing an EXISTING research project based on a follow-up request.
+
+FOLLOW-UP REQUEST: {user_message}
+
+CRITICAL INSTRUCTIONS:
+1. **DO NOT** call write_research_metadata() unless the user explicitly asks to RENAME the project.
+   - Maintain the existing project title and category.
+   - "Mark as done" or "Finish" requests are status updates, NOT new research topics.
+
+2. **Research Context**:
+   - You are adding to or refining the existing research files.
+   - Do not overwrite README.md unless specifically asked to rewrite the overview.
+   - Prefer updating existing HTML files or creating new specific ones (e.g., `comparison-v2.html`).
+
+3. **Tools**:
+   - Use web_search for new information.
+   - Use write_file to save your response or updates.
+   - Use update_research_progress to show what you are doing.
+
+4. **Response**:
+   - Provide a direct, helpful answer to the follow-up.
+   - If asked to "mark as done", simply confirm completion and ensure the files are in good state.
+
+Continue the research based on this request.
