@@ -1,13 +1,22 @@
 # SearXNG Settings for Research Portal
 # Documentation: https://docs.searxng.org/admin/settings/
+# 
+# OPTIMIZED FOR: Maximum coverage with all free engines
+# Last updated: 2025-11-25
 
 use_default_settings: true
 
+general:
+  debug: true
+  instance_name: "Research Portal Search"
+  enable_metrics: false
+
 server:
-  secret_key: "changeme-in-production"
+  secret_key: "changeme-in-production-use-random-string"
   limiter: false
   image_proxy: true
-  method: "GET"
+  method: "POST"
+  public_instance: false
 
 ui:
   static_use_hash: true
@@ -21,126 +30,519 @@ ui:
 
 search:
   safe_search: 0
-  autocomplete: "google"
-  default_lang: "en"
+  autocomplete: ""
+  default_lang: "auto"
   formats:
     - html
     - json
 
-# Enable/disable search engines
-# The Research Portal will use these for web searches
+# Redis caching - reduces requests to search engines
+redis:
+  url: redis://redis:6379/0
+
+# =============================================================================
+# OUTGOING REQUEST CONFIGURATION
+# =============================================================================
+outgoing:
+  request_timeout: 4.0
+  max_request_timeout: 10.0
+  pool_connections: 100
+  pool_maxsize: 20
+  max_redirects: 3
+  keepalive_expiry: 15.0
+  retries: 1
+
+# =============================================================================
+# ENGINE CONFIGURATION - ALL FREE ENGINES
+# =============================================================================
 engines:
-  # General Search
+
+  # =========================================================================
+  # GENERAL WEB SEARCH - Primary engines
+  # =========================================================================
+  
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+    weight: 2.0
+    timeout: 4.0
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    disabled: false
+    weight: 2.0
+    timeout: 4.0
+
+  - name: qwant
+    engine: qwant
+    shortcut: qw
+    disabled: false
+    weight: 1.5
+    timeout: 4.0
+
+  - name: mojeek
+    engine: mojeek
+    shortcut: mj
+    disabled: false
+    weight: 1.0
+    timeout: 4.0
+
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+    disabled: false
+    weight: 1.0
+    timeout: 4.0
+
+  - name: marginalia
+    engine: marginalia
+    shortcut: mg
+    disabled: false
+    weight: 0.5
+    timeout: 4.0
+
+  # wiby not available
+  # - name: wiby
+  #   engine: wiby
+  #   shortcut: wib
+  #   disabled: false
+  #   weight: 0.3
+  #   timeout: 4.0
+
+  # seekr has connection issues
+  - name: seekr
+    engine: seekr
+    shortcut: skr
+    seekr_category: news
+    disabled: true
+    weight: 0.5
+    timeout: 4.0
+
+  - name: yahoo
+    engine: yahoo
+    shortcut: yh
+    disabled: false
+    weight: 0.6
+    timeout: 4.0
+
+  # ecosia engine not available in this version
+  # - name: ecosia
+  #   engine: ecosia
+  #   shortcut: ec
+  #   disabled: false
+
+  # Lower priority - aggressive blocking
   - name: google
     engine: google
     shortcut: g
     disabled: false
+    weight: 0.4
+    timeout: 5.0
 
   - name: bing
     engine: bing
     shortcut: b
     disabled: false
+    weight: 0.3
+    timeout: 4.0
 
-  - name: duckduckgo
+  # =========================================================================
+  # METASEARCH - Public SearXNG instances (DISABLED)
+  # =========================================================================
+  # NOTE: Public SearXNG instances rate-limit automated requests (HTTP 429)
+  # They're designed to prevent API abuse, so metasearch doesn't work reliably.
+  # The custom searx_metasearch.py engine works correctly, but instances block us.
+  # These are disabled to reduce noise in logs and improve response times.
+  # =========================================================================
+
+  # - name: searx.rhscz.eu
+  #   engine: searx_metasearch
+  #   shortcut: sxrh
+  #   base_url: https://searx.rhscz.eu
+  #   disabled: true
+  #   weight: 0.8
+  #   timeout: 3.0
+
+  # - name: searx.stream
+  #   engine: searx_metasearch
+  #   shortcut: sxst
+  #   base_url: https://searx.stream
+  #   disabled: true
+  #   weight: 0.8
+  #   timeout: 3.0
+
+  # - name: searx.tiekoetter.com
+  #   engine: searx_metasearch
+  #   shortcut: sxtk
+  #   base_url: https://searx.tiekoetter.com
+  #   disabled: true
+  #   weight: 0.7
+  #   timeout: 4.0
+
+  # - name: search.inetol.net
+  #   engine: searx_metasearch
+  #   shortcut: sxin
+  #   base_url: https://search.inetol.net
+  #   disabled: true
+  #   weight: 0.6
+  #   timeout: 4.0
+
+  # - name: search.im-in.space
+  #   engine: searx_metasearch
+  #   shortcut: sxsp
+  #   base_url: https://search.im-in.space
+  #   disabled: true
+  #   weight: 0.5
+  #   timeout: 5.0
+
+  # =========================================================================
+  # NEWS
+  # =========================================================================
+
+  - name: duckduckgo news
     engine: duckduckgo
-    shortcut: ddg
+    shortcut: ddn
+    categories: news
     disabled: false
 
-  - name: brave
-    engine: brave
-    shortcut: br
-    disabled: true
-
-  # Knowledge
-  - name: wikipedia
-    engine: wikipedia
-    shortcut: w
+  - name: qwant news
+    engine: qwant
+    shortcut: qwn
+    categories: news
     disabled: false
 
-  - name: wikidata
-    engine: wikidata
-    shortcut: wd
-    disabled: true
-
-  # Developer
-  - name: github
-    engine: github
-    shortcut: gh
+  - name: yahoo news
+    engine: yahoo_news
+    shortcut: yhn
+    categories: news
     disabled: false
 
-  # stackoverflow engine removed - use stackexchange instead
-  - name: stackexchange
-    engine: stackexchange
-    shortcut: se
-    categories: [it, q&a]
-    disabled: false
-
-  - name: npm
-    engine: npm
-    shortcut: npm
-    disabled: true
-
-  - name: pypi
-    engine: pypi
-    shortcut: pypi
-    disabled: true
-
-  # Science & Academic
-  - name: arxiv
-    engine: arxiv
-    shortcut: ar
-    disabled: true
-
-  - name: google scholar
-    engine: google_scholar
-    shortcut: gs
-    disabled: true
-
-  - name: semantic scholar
-    engine: semantic_scholar
-    shortcut: ss
-    disabled: true
-
-  # Social & Forums
-  - name: reddit
-    engine: reddit
-    shortcut: r
-    disabled: true
-
-  - name: hackernews
-    engine: hackernews
-    shortcut: hckr
-    disabled: true
-
-  # Media
-  - name: youtube
-    engine: youtube_noapi
-    shortcut: yt
-    disabled: true
-
-  - name: vimeo
-    engine: vimeo
-    shortcut: vm
-    disabled: true
-
-  # News
   - name: google news
     engine: google_news
     shortcut: gn
-    disabled: true
+    disabled: false
+    weight: 0.4
+    timeout: 5.0
 
   - name: bing news
     engine: bing_news
     shortcut: bn
+    disabled: false
+    weight: 0.3
+
+  # =========================================================================
+  # IMAGES
+  # =========================================================================
+
+  # duckduckgo images not available
+  # - name: duckduckgo images
+  #   engine: duckduckgo_images
+  #   shortcut: ddi
+  #   categories: images
+  #   disabled: false
+
+  - name: qwant images
+    engine: qwant
+    shortcut: qwi
+    categories: images
+    disabled: false
+
+  # flickr not available
+  # - name: flickr
+  #   engine: flickr
+  #   shortcut: fl
+  #   categories: images
+  #   disabled: false
+
+  - name: unsplash
+    engine: unsplash
+    shortcut: us
+    categories: images
+    disabled: false
+
+  - name: wallhaven
+    engine: wallhaven
+    shortcut: wh
+    categories: images
+    disabled: false
+
+  # =========================================================================
+  # VIDEOS
+  # =========================================================================
+
+  - name: duckduckgo videos
+    engine: duckduckgo
+    shortcut: ddv
+    categories: videos
+    disabled: false
+
+  - name: dailymotion
+    engine: dailymotion
+    shortcut: dm
+    categories: videos
+    disabled: false
+
+  - name: vimeo
+    engine: vimeo
+    shortcut: vm
+    categories: videos
+    disabled: false
+
+  - name: peertube
+    engine: peertube
+    shortcut: pt
+    categories: videos
+    disabled: false
+
+  # =========================================================================
+  # MUSIC
+  # =========================================================================
+
+  - name: bandcamp
+    engine: bandcamp
+    shortcut: bc
+    categories: music
+    disabled: false
+
+  - name: soundcloud
+    engine: soundcloud
+    shortcut: sc
+    categories: music
+    disabled: false
+
+  - name: genius
+    engine: genius
+    shortcut: gen
+    categories: music
+    disabled: false
+
+  # radio_browser has DNS issues, disabled
+  - name: radio browser
+    engine: radio_browser
+    shortcut: rb
+    categories: music
     disabled: true
 
-outgoing:
-  request_timeout: 6.0
-  max_request_timeout: 15.0
-  pool_connections: 100
-  pool_maxsize: 20
-  # Tor proxy settings (uncomment to enable)
-  proxies:
-    all://:
-      - socks5h://tor:9050
-  using_tor_proxy: true
+  # =========================================================================
+  # FILES
+  # =========================================================================
+
+  - name: annas archive
+    engine: annas_archive
+    shortcut: aa
+    categories: files
+    disabled: false
+
+  # free software directory not available
+  # - name: free software directory
+  #   engine: free_software_directory
+  #   shortcut: fsd
+  #   categories: files
+  #   disabled: false
+
+  # =========================================================================
+  # IT / PROGRAMMING
+  # =========================================================================
+
+  - name: github
+    engine: github
+    shortcut: gh
+    categories: it
+    disabled: false
+
+  - name: gitlab
+    engine: gitlab
+    shortcut: gl
+    categories: it
+    disabled: false
+
+  # codeberg not available
+  # - name: codeberg
+  #   engine: codeberg
+  #   shortcut: cb
+  #   categories: it
+  #   disabled: false
+
+  # stackoverflow not available
+  # - name: stackoverflow
+  #   engine: stackoverflow
+  #   shortcut: so
+  #   categories: it
+  #   disabled: false
+
+  # askubuntu not available
+  # - name: askubuntu
+  #   engine: askubuntu
+  #   shortcut: au
+  #   categories: it
+  #   disabled: false
+
+  # superuser not available
+  # - name: superuser
+  #   engine: superuser
+  #   shortcut: su
+  #   categories: it
+  #   disabled: false
+
+  - name: searchcode code
+    engine: searchcode_code
+    shortcut: scc
+    categories: it
+    disabled: false
+
+  # searchcode_doc doesn't exist, only searchcode_code
+
+  # =========================================================================
+  # SCIENCE / ACADEMIC
+  # =========================================================================
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: arx
+    categories: science
+    disabled: false
+
+  - name: crossref
+    engine: crossref
+    shortcut: cr
+    categories: science
+    disabled: false
+
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gsc
+    categories: science
+    disabled: false
+    weight: 0.4
+    timeout: 5.0
+
+  - name: pubmed
+    engine: pubmed
+    shortcut: pm
+    categories: science
+    disabled: false
+
+  - name: semantic scholar
+    engine: semantic_scholar
+    shortcut: ss
+    categories: science
+    disabled: false
+
+  # openaire engine not available in this version
+
+  # =========================================================================
+  # SOCIAL MEDIA
+  # =========================================================================
+
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    categories: social media
+    disabled: false
+
+  - name: lemmy
+    engine: lemmy
+    shortcut: lm
+    base_url: https://lemmy.ml
+    categories: social media
+    disabled: false
+
+  - name: mastodon.social
+    engine: mastodon
+    shortcut: mast
+    base_url: https://mastodon.social
+    categories: social media
+    disabled: false
+
+  # =========================================================================
+  # MAPS
+  # =========================================================================
+
+  - name: openstreetmap
+    engine: openstreetmap
+    shortcut: osm
+    categories: map
+    disabled: false
+
+  - name: photon
+    engine: photon
+    shortcut: ph
+    categories: map
+    disabled: false
+
+  # =========================================================================
+  # WIKIS / KNOWLEDGE
+  # =========================================================================
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    disabled: false
+    weight: 1.0
+
+  - name: wikidata
+    engine: wikidata
+    shortcut: wd
+    disabled: false
+
+  # wikis not available in this image
+  # - name: wikiquote
+  #   engine: wikiquote
+  #   shortcut: wq
+  #   disabled: false
+
+  # - name: wikibooks
+  #   engine: wikibooks
+  #   shortcut: wbk
+  #   disabled: false
+
+  # - name: wikinews
+  #   engine: wikinews
+  #   shortcut: wn
+  #   disabled: false
+
+  # - name: wikisource
+  #   engine: wikisource
+  #   shortcut: ws
+  #   disabled: false
+
+  # - name: wiktionary
+  #   engine: wiktionary
+  #   shortcut: wt
+  #   disabled: false
+
+  # - name: wikiversity
+  #   engine: wikiversity
+  #   shortcut: wv
+  #   disabled: false
+
+  # - name: wikivoyage
+  #   engine: wikivoyage
+  #   shortcut: wvg
+  #   disabled: false
+
+  # - name: wikispecies
+  #   engine: wikispecies
+  #   shortcut: wsp
+  #   disabled: false
+
+  # NOTE: The following wiki engines don't exist in the Docker image:
+  # wikibooks, wikinews, wikisource, wiktionary, wikiversity, wikispecies, wikivoyage
+  # They generate "Engine does not exist" errors, so they're commented out.
+
+  # =========================================================================
+  # OTHER / UTILITIES
+  # =========================================================================
+
+  - name: currency
+    engine: currency_convert
+    shortcut: cc
+    disabled: false
+
+  # openrepos engine doesn't exist in this Docker image
+  # - name: openrepos
+  #   engine: openrepos
+  #   shortcut: or
+  #   disabled: false

@@ -67,14 +67,20 @@ services:
       - search
       - full
       - full-tor
+    depends_on:
+      - redis
     ports:
       - "${SEARXNG_PORT:-8080}:8080"
     environment:
       - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT:-8080}/
       - SEARXNG_SECRET=${SEARXNG_SECRET:-ultrasecretkey-change-me}
+      # Brave Search API key (optional, set in .env.local)
+      - SEARXNG_BRAVE_API_KEY=${BRAVE_API_KEY:-}
     volumes:
       - ./searxng:/etc/searxng:rw
       - searxng-data:/var/cache/searxng
+      # Mount fixed searx_engine as a new engine to avoid pycache issues
+      - ./searxng/searx_metasearch.py:/usr/local/searxng/searx/engines/searx_metasearch.py:ro
     cap_drop:
       - ALL
     cap_add:
@@ -106,15 +112,16 @@ services:
       start_period: 30s
 
   # ==========================================================================
-  # Redis - Optional caching for SearXNG
+  # Redis - Caching for SearXNG (reduces requests to search engines)
   # ==========================================================================
   redis:
-    image: redis:6.2-alpine
+    image: redis:7-alpine
     container_name: research-redis
     profiles:
+      - search
       - full
       - full-tor
-    command: redis-server --save 60 1 --loglevel warning
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     restart: unless-stopped
