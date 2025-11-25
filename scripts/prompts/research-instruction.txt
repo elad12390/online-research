@@ -5,11 +5,23 @@ TOPIC: {topic}
 DEPTH: {depth_instruction}
 STYLE: {style_instruction}
 
-PROGRESS TRACKING:
-- Use update_research_progress() regularly to report your progress
-- IMPORTANT: Include estimated_minutes_remaining to help the user know when you'll finish
-- Example: update_research_progress(25, "Web research", "Searching for sources", 15)
+PROGRESS TRACKING (MANDATORY):
+- Use update_research_progress() regularly - ALL 4 PARAMETERS ARE REQUIRED:
+  1. percentage (int): 0-100
+  2. current_task (str): Short task name
+  3. task_description (str): What you're doing
+  4. estimated_minutes_remaining (int): Minutes until done
+
+- CORRECT example:
+  update_research_progress(
+      percentage=25,
+      current_task="Web research",
+      task_description="Searching for product reviews and expert opinions",
+      estimated_minutes_remaining=15
+  )
+
 - Update progress at least every few minutes so the user can track your work
+- Use estimated_minutes_remaining=0 only when percentage=100 (complete)
 
 RESEARCH PROCESS:
 
@@ -19,15 +31,26 @@ RESEARCH PROCESS:
    - Use compare_tech to compare products/technologies if applicable
    - Use other available tools as needed
    
-   MULTILINGUAL SEARCH STRATEGY:
-   - Before searching, think about which language(s) will yield the most/best results
-   - For region-specific topics, search in the local language(s) for richer results
-   - Examples:
-     * Israel/Palestine topics → search in Hebrew, Arabic, AND English
-     * Japanese products → search in Japanese AND English
-     * French cuisine → search in French AND English
-     * Latin American politics → search in Spanish AND English
-   - Combine results from multiple languages for comprehensive coverage
+   MULTILINGUAL SEARCH STRATEGY (MANDATORY):
+   - YOU MUST search in multiple languages for better coverage
+   - ALWAYS determine the relevant local language(s) for your topic and search in them
+   - DO NOT search only in English - local language searches find better local sources
+   - Examples of REQUIRED multilingual searches:
+     * Israel topics → MUST search in Hebrew (עברית) AND English
+       e.g., "מסעדות יפניות תל אביב" AND "Japanese restaurants Tel Aviv"
+     * Japan topics → MUST search in Japanese (日本語) AND English
+       e.g., "東京 寿司 おまかせ" AND "Tokyo sushi omakase"
+     * France topics → MUST search in French AND English
+     * Spain/Latin America → MUST search in Spanish AND English
+     * Germany topics → MUST search in German AND English
+     * Arab countries → MUST search in Arabic (العربية) AND English
+     * China topics → MUST search in Chinese (中文) AND English
+     * Russia topics → MUST search in Russian (русский) AND English
+   - For location-specific queries (restaurants, services, local businesses):
+     * Local language searches are ESSENTIAL - they find local review sites, blogs, forums
+     * English-only searches miss most local knowledge
+   - Make SEPARATE search calls for each language - do not mix languages in one query
+   - Combine and cross-reference results from all language searches
    
    SOURCE BIAS AWARENESS (CRITICAL for political/news topics):
    - When you find information from a news source, RESEARCH THAT SOURCE'S BIAS:

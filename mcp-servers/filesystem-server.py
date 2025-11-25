@@ -289,30 +289,32 @@ def update_research_progress(
     percentage: int,
     current_task: str,
     task_description: str,
-    estimated_minutes_remaining: int | None = None,
+    estimated_minutes_remaining: int,
 ) -> str:
     """
-    Update the research progress file to track completion status.
+    Update research progress. ALL 4 PARAMETERS ARE REQUIRED.
 
-    USE THIS TOOL to report your progress as you work through the research.
-    Call this when you:
-    - Start a new major task (searching, analyzing, writing)
-    - Complete a significant step
-    - Finish the entire research
+    REQUIRED PARAMETERS (you must provide ALL of these):
+    1. percentage (int): Progress 0-100 (0=started, 100=complete)
+    2. current_task (str): Short task name like "Web research" or "Writing files"
+    3. task_description (str): What you're doing now in detail
+    4. estimated_minutes_remaining (int): Minutes until done (use 0 when complete)
 
-    Args:
-        percentage: Progress percentage from 0-100 (0=just started, 100=complete)
-        current_task: Short name of current task (e.g., "Searching web", "Writing README")
-        task_description: Detailed description of what you're doing now
-        estimated_minutes_remaining: Your estimate of how many minutes until completion (optional but encouraged)
+    CORRECT USAGE:
+    update_research_progress(
+        percentage=25,
+        current_task="Web research",
+        task_description="Searching for product reviews and comparisons",
+        estimated_minutes_remaining=15
+    )
 
-    Returns:
-        Confirmation message
+    WRONG (missing parameters):
+    update_research_progress(percentage=25, current_task="Research")  # FAILS!
 
-    Example:
-        update_research_progress(25, "Web research", "Gathering information about indoor grills", 15)
-        update_research_progress(75, "Writing files", "Creating comparison chart markdown file", 5)
-        update_research_progress(100, "Complete", "All research files created successfully", 0)
+    Call this tool:
+    - When starting a new major task
+    - After completing significant steps
+    - When finishing (percentage=100, estimated_minutes_remaining=0)
     """
     import json
     from datetime import datetime, timedelta
@@ -342,7 +344,7 @@ def update_research_progress(
 
     # Calculate estimated completion time
     estimated_completion = None
-    if estimated_minutes_remaining is not None and estimated_minutes_remaining > 0:
+    if estimated_minutes_remaining > 0:
         estimated_completion = (
             now + timedelta(minutes=estimated_minutes_remaining)
         ).isoformat() + "Z"
