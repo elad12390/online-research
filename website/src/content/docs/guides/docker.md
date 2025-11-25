@@ -1,217 +1,145 @@
 ---
 title: Docker Deployment
-description: Deploy Research Portal with Docker and Docker Compose.
+description: Running Research Portal in production.
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+Docker is the recommended way to run Research Portal. One command, everything works.
 
-This guide covers Docker deployment options for Research Portal.
+## Deployment Options
 
-## Quick Start
+### Standard (Recommended)
+
+Portal + SearXNG for private web search:
 
 ```bash
-# Clone and start
-git clone https://github.com/elad12390/online-research.git
-cd online-research
-cp .env.example .env
-# Edit .env with your API keys
 docker compose --profile search up -d
 ```
 
-## Deployment Profiles
+**Includes:**
+- Research Portal on port 3000
+- SearXNG on port 8080
+- Shared research volume
 
-Research Portal offers three deployment profiles:
+### Minimal
 
-### Default (Portal Only)
+Just the portal, no search (use if you have external search):
 
 ```bash
 docker compose up -d
 ```
 
-**Services**: Research Portal  
-**Use when**: You have an external search solution or don't need web search
+### Full Stack
 
-### Search Profile (Recommended)
-
-```bash
-docker compose --profile search up -d
-```
-
-**Services**: Research Portal + SearXNG  
-**Use when**: Standard deployment with private web search
-
-### Full Profile
+Everything plus Redis for search caching:
 
 ```bash
 docker compose --profile full up -d
 ```
 
-**Services**: Research Portal + SearXNG + Redis  
-**Use when**: High-traffic deployments needing search caching
+Useful for heavy search usage.
 
-## Docker Compose File
+---
 
-The `docker-compose.yml` structure:
+## Daily Operations
 
-```yaml
-services:
-  portal:
-    build: .
-    ports:
-      - "${PORTAL_PORT:-3000}:3000"
-    volumes:
-      - "${RESEARCH_DIR:-./research}:/research"
-      - "./.env:/app/.env"
-    environment:
-      - RESEARCH_DIR=/research
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+```bash
+# View logs
+docker compose logs -f
 
-  searxng:
-    image: searxng/searxng:latest
-    profiles: ["search", "full"]
-    ports:
-      - "${SEARXNG_PORT:-8080}:8080"
-    volumes:
-      - ./searxng:/etc/searxng
+# Stop
+docker compose stop
 
-  redis:
-    image: redis:alpine
-    profiles: ["full"]
+# Start
+docker compose start
+
+# Restart
+docker compose restart
+
+# Update to latest
+git pull
+docker compose down
+docker compose --profile search up -d --build
 ```
 
-## Environment Configuration
+---
 
-### Basic `.env` Setup
+## Configuration
+
+All config lives in `.env`:
 
 ```bash
 # Ports
 PORTAL_PORT=3000
 SEARXNG_PORT=8080
 
-# Research directory (mounted as volume)
+# Data directory
 RESEARCH_DIR=./research
 
-# API Keys (at least one required)
-ANTHROPIC_API_KEY=sk-ant-api03-...
-OPENAI_API_KEY=sk-proj-...
-GOOGLE_API_KEY=AIzaSy...
+# API keys
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-### Search Engine Configuration
+See [Configuration](/online-research/guides/configuration/) for all options.
 
+---
+
+## Data Persistence
+
+Research is stored in `RESEARCH_DIR` (default: `./research`).
+
+**To backup:**
 ```bash
-# Enable/disable search engines
-SEARCH_GOOGLE=true
-SEARCH_BING=true
-SEARCH_DUCKDUCKGO=true
-SEARCH_WIKIPEDIA=true
-SEARCH_GITHUB=true
-SEARCH_STACKOVERFLOW=true
+tar -czvf research-backup.tar.gz ./research
 ```
 
-## Common Operations
-
-### View Logs
-
+**To restore:**
 ```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f portal
-docker compose logs -f searxng
+tar -xzvf research-backup.tar.gz
 ```
 
-### Service Management
+The SQLite database is at `./research/research-wizard.db`. Include it in backups.
 
-```bash
-# Stop services
-docker compose stop
+---
 
-# Start services
-docker compose start
+## Reverse Proxy
 
-# Restart services
-docker compose restart
+For production with a domain, put a reverse proxy in front.
 
-# Rebuild and restart
-docker compose up -d --build
-```
+### Nginx
 
-### Cleanup
+```nginx
+server {
+    listen 80;
+    server_name research.yourdomain.com;
 
-```bash
-# Remove containers (keep data)
-docker compose down
-
-# Remove containers and volumes
-docker compose down -v
-
-# Remove everything including images
-docker compose down -v --rmi all
-```
-
-## Production Deployment
-
-### Using a Reverse Proxy
-
-<Tabs>
-  <TabItem label="Nginx">
-    ```nginx
-    upstream portal {
-      server localhost:3000;
-    }
-
-    server {
-      listen 80;
-      server_name research.example.com;
-      
-      location / {
-        proxy_pass http://portal;
+    location / {
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-      }
     }
-    ```
-  </TabItem>
-  <TabItem label="Caddy">
-    ```caddyfile
-    research.example.com {
-      reverse_proxy localhost:3000
-    }
-    ```
-  </TabItem>
-  <TabItem label="Traefik">
-    Add labels to your `docker-compose.yml`:
-    ```yaml
-    services:
-      portal:
-        labels:
-          - "traefik.enable=true"
-          - "traefik.http.routers.portal.rule=Host(`research.example.com`)"
-          - "traefik.http.services.portal.loadbalancer.server.port=3000"
-    ```
-  </TabItem>
-</Tabs>
+}
+```
 
-### SSL/TLS Configuration
+### Caddy
 
-For production, always use HTTPS. Options:
+```caddyfile
+research.yourdomain.com {
+    reverse_proxy localhost:3000
+}
+```
 
-1. **Reverse proxy with Let's Encrypt** (recommended)
-2. **Cloudflare Tunnel**
-3. **Self-signed certificates** (development only)
+Caddy handles HTTPS automatically.
 
-### Resource Limits
+---
 
-Add resource limits for production:
+## Resource Limits
+
+For production, add limits:
 
 ```yaml
+# In docker-compose.yml
 services:
   portal:
     deploy:
@@ -219,113 +147,67 @@ services:
         limits:
           cpus: '2'
           memory: 4G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
 ```
 
-### Health Checks
+---
 
-The portal exposes a health endpoint:
+## Health Checks
+
+The portal exposes `/api/health`:
 
 ```bash
 curl http://localhost:3000/api/health
 ```
 
-Add health checks to Docker Compose:
-
-```yaml
-services:
-  portal:
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+Returns:
+```json
+{
+  "status": "ok",
+  "projectCount": 12,
+  "timestamp": "..."
+}
 ```
 
-## Data Persistence
+Use this for monitoring and load balancer health checks.
 
-### Research Directory
-
-Research projects are stored in `RESEARCH_DIR`, mounted as a volume:
-
-```yaml
-volumes:
-  - "${RESEARCH_DIR:-./research}:/research"
-```
-
-**Backup strategy**:
-```bash
-# Backup research directory
-tar -czvf research-backup-$(date +%Y%m%d).tar.gz ./research
-```
-
-### Database
-
-The SQLite database is stored in the research directory:
-
-```
-/research/research-wizard.db
-```
-
-Include it in your backup strategy.
+---
 
 ## Troubleshooting
 
-### Container Won't Start
-
+**Port conflict:**
 ```bash
-# Check logs
-docker compose logs portal
-
-# Common issues:
-# - Missing API keys
-# - Port conflicts
-# - Permission issues on volumes
-```
-
-### Port Conflicts
-
-```bash
-# Find what's using a port
+# Find what's using the port
 lsof -i :3000
 
 # Change port in .env
 PORTAL_PORT=3001
 ```
 
-### Permission Issues
-
+**Container won't start:**
 ```bash
-# Fix research directory permissions
-chmod -R 755 ./research
-chown -R $(id -u):$(id -g) ./research
-```
+# Check logs
+docker compose logs portal
 
-### SearXNG Not Working
-
-```bash
-# Check SearXNG logs
-docker compose logs searxng
-
-# Verify settings
-cat searxng/settings.yml
-
-# Restart SearXNG
-docker compose restart searxng
-```
-
-## Updating
-
-To update to a new version:
-
-```bash
-# Pull latest changes
-git pull
-
-# Rebuild containers
-docker compose down
+# Rebuild from scratch
+docker compose down -v
 docker compose build --no-cache
 docker compose --profile search up -d
+```
+
+**Out of disk space:**
+```bash
+# Clean Docker
+docker system prune -a
+```
+
+**SearXNG not working:**
+```bash
+# Check if running
+curl http://localhost:8080
+
+# Check logs
+docker compose logs searxng
+
+# Restart just SearXNG
+docker compose restart searxng
 ```

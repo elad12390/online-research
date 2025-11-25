@@ -1,197 +1,99 @@
 ---
 title: MCP Integration
-description: Integrate Research Portal with Claude Desktop and other MCP clients.
+description: Let Claude Desktop (and other AI tools) access your research library.
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+Research Portal supports [MCP (Model Context Protocol)](https://modelcontextprotocol.io/), which means AI assistants like Claude Desktop can search and read your research library directly.
 
-Research Portal works with any MCP (Model Context Protocol) client, including Claude Desktop, OpenCode, and custom implementations.
+## Why This Matters
 
-## What is MCP?
+Imagine you've researched "best database for time-series data" last month. Now you're in Claude Desktop discussing a new project. Instead of alt-tabbing to find that research, Claude can just... read it.
 
-The Model Context Protocol (MCP) is an open standard for connecting AI assistants to external data sources and tools. Research Portal implements MCP to:
+"Based on your previous research on time-series databases, you found that TimescaleDB was best for your use case because..."
 
-- Expose your research library to AI assistants
-- Enable AI to search and read your research
-- Provide web search capabilities via SearXNG
+Your research becomes context for future AI conversations.
 
-## Claude Desktop Integration
+---
 
-### Configuration
+## Claude Desktop Setup
 
-Add the following to your Claude Desktop config:
-
-<Tabs>
-  <TabItem label="macOS">
-    Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-    
-    ```json
-    {
-      "mcpServers": {
-        "web-research-assistant": {
-          "command": "uvx",
-          "args": ["web-research-assistant"],
-          "env": {
-            "SEARXNG_URL": "http://localhost:8080"
-          }
-        }
-      }
-    }
-    ```
-  </TabItem>
-  <TabItem label="Windows">
-    Edit `%APPDATA%\Claude\claude_desktop_config.json`:
-    
-    ```json
-    {
-      "mcpServers": {
-        "web-research-assistant": {
-          "command": "uvx",
-          "args": ["web-research-assistant"],
-          "env": {
-            "SEARXNG_URL": "http://localhost:8080"
-          }
-        }
-      }
-    }
-    ```
-  </TabItem>
-  <TabItem label="Linux">
-    Edit `~/.config/Claude/claude_desktop_config.json`:
-    
-    ```json
-    {
-      "mcpServers": {
-        "web-research-assistant": {
-          "command": "uvx",
-          "args": ["web-research-assistant"],
-          "env": {
-            "SEARXNG_URL": "http://localhost:8080"
-          }
-        }
-      }
-    }
-    ```
-  </TabItem>
-</Tabs>
-
-### Prerequisites
-
-1. **Install uv** (Python package manager):
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Start SearXNG** (if using web search):
-   ```bash
-   docker compose --profile search up -d
-   ```
-
-3. **Restart Claude Desktop** to load the new configuration
-
-### Verify Integration
-
-In Claude Desktop, ask:
-
-> "Can you search the web for the latest React 19 features?"
-
-Claude should use the web-research-assistant tools to search and return results.
-
-## Available MCP Tools
-
-When integrated, Claude has access to these tools:
-
-### Web Search Tools
-
-| Tool | Description |
-|------|-------------|
-| `web_search` | Search the web via SearXNG |
-| `search_examples` | Find code examples and tutorials |
-| `api_docs` | Fetch API documentation |
-| `package_info` | Look up npm/PyPI package info |
-| `compare_tech` | Compare technologies side-by-side |
-| `translate_error` | Find solutions for error messages |
-
-### Research Portal Tools
-
-| Tool | Description |
-|------|-------------|
-| `resources/list` | List all research projects |
-| `resources/read` | Read research document content |
-| `resources/search` | Search across research |
-
-## Research Portal MCP Server
-
-Research Portal also exposes an MCP server for accessing your research library.
-
-### Endpoint
-
-```
-http://localhost:3000/api/mcp
-```
-
-### Protocol
-
-- **SSE (GET)**: Server-to-client streaming
-- **JSON-RPC (POST)**: Client-to-server requests
-
-### Example: List Resources
+### 1. Install uv (if you haven't)
 
 ```bash
-curl -X POST http://localhost:3000/api/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "resources/list",
-    "params": {}
-  }'
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Response:
+### 2. Add to Claude Desktop Config
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`  
+**Linux:** `~/.config/Claude/claude_desktop_config.json`
+
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "resources": [
-      {
-        "uri": "research://project-id/README.md",
-        "name": "Project Title - README.md",
-        "mimeType": "text/markdown"
+  "mcpServers": {
+    "web-research-assistant": {
+      "command": "uvx",
+      "args": ["web-research-assistant"],
+      "env": {
+        "SEARXNG_URL": "http://localhost:8080"
       }
-    ]
+    }
   }
 }
 ```
 
-### Example: Read Resource
+### 3. Restart Claude Desktop
+
+Close and reopen. That's it.
+
+### 4. Test It
+
+Ask Claude:
+
+> "Can you search the web for the latest Next.js 15 features?"
+
+Claude should use the web search tools. If it works, you're connected.
+
+---
+
+## What Claude Can Do
+
+With MCP connected, Claude Desktop gains:
+
+**Web Search**
+- Search via your SearXNG instance
+- Find code examples and tutorials
+- Look up API documentation
+- Get package info from npm/PyPI
+
+**Research Access** (via Research Portal's MCP endpoint)
+- List your research projects
+- Read research documents
+- Search across your research library
+
+---
+
+## Using Your Research Library
+
+Research Portal also exposes an MCP server at `localhost:3000/api/mcp`.
+
+To give Claude access to your research (not just web search), you can query it directly:
 
 ```bash
+# List all research
 curl -X POST http://localhost:3000/api/mcp \
   -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 2,
-    "method": "resources/read",
-    "params": {
-      "uri": "research://my-project/README.md"
-    }
-  }'
+  -d '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}'
 ```
+
+For full MCP client integration, see the [MCP Server Reference](/online-research/reference/mcp-server/).
+
+---
 
 ## OpenCode Integration
 
-For OpenCode CLI, add to your `opencode.yaml`:
-
-```yaml
-mcpServers:
-  research-portal:
-    command: "curl"
-    args: ["-X", "POST", "http://localhost:3000/api/mcp"]
-```
-
-Or use the web-research-assistant directly:
+If you use OpenCode, add to your config:
 
 ```yaml
 mcpServers:
@@ -202,118 +104,38 @@ mcpServers:
       SEARXNG_URL: "http://localhost:8080"
 ```
 
-## Custom MCP Client
+Same deal — your coding assistant can now search the web and reference your research.
 
-Build your own client using the MCP SDK:
-
-### TypeScript
-
-```typescript
-async function listResources() {
-  const response = await fetch('http://localhost:3000/api/mcp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'resources/list',
-      params: {}
-    })
-  });
-  
-  const data = await response.json();
-  return data.result.resources;
-}
-
-async function readResource(uri: string) {
-  const response = await fetch('http://localhost:3000/api/mcp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 2,
-      method: 'resources/read',
-      params: { uri }
-    })
-  });
-  
-  const data = await response.json();
-  return data.result.contents[0].text;
-}
-```
-
-### Python
-
-```python
-import requests
-
-def list_resources():
-    response = requests.post(
-        'http://localhost:3000/api/mcp',
-        json={
-            'jsonrpc': '2.0',
-            'id': 1,
-            'method': 'resources/list',
-            'params': {}
-        }
-    )
-    return response.json()['result']['resources']
-
-def read_resource(uri):
-    response = requests.post(
-        'http://localhost:3000/api/mcp',
-        json={
-            'jsonrpc': '2.0',
-            'id': 2,
-            'method': 'resources/read',
-            'params': {'uri': uri}
-        }
-    )
-    return response.json()['result']['contents'][0]['text']
-```
-
-## URI Format
-
-Research resources use the `research://` URI scheme:
-
-```
-research://<project-id>/<file-name>
-```
-
-Examples:
-- `research://indoor-grill-research/README.md`
-- `research://market-analysis-2024/findings.html`
+---
 
 ## Troubleshooting
 
-### "uvx: command not found"
+**"uvx: command not found"**
 
 Install uv:
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### SearXNG Not Responding
+Then restart your terminal.
 
-Check if SearXNG is running:
-```bash
-curl http://localhost:8080
-```
+**Claude doesn't see the tools**
 
-Start if needed:
+1. Make sure you saved the config file
+2. Completely quit and restart Claude Desktop (not just close the window)
+3. Check the config file is valid JSON
+
+**Web search returns nothing**
+
+SearXNG might not be running:
 ```bash
 docker compose --profile search up -d
+curl http://localhost:8080  # Should return HTML
 ```
 
-### Claude Desktop Not Finding Tools
+**"Connection refused" errors**
 
-1. Restart Claude Desktop after config changes
-2. Check config file syntax (valid JSON)
-3. Verify the config file path is correct
-
-### MCP Server Connection Refused
-
-Ensure Research Portal is running:
+Make sure Research Portal is running:
 ```bash
 curl http://localhost:3000/api/health
 ```

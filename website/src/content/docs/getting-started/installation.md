@@ -1,236 +1,184 @@
 ---
 title: Installation
-description: Detailed installation guide for Research Portal.
+description: Detailed setup for Docker and local development.
 ---
 
-import { Tabs, TabItem, Steps } from '@astrojs/starlight/components';
+Two ways to run Research Portal: **Docker** (recommended) or **local development**.
 
-This guide covers all installation methods for Research Portal.
-
-## System Requirements
-
-### Docker Installation (Recommended)
-
-- **Docker**: 20.10+
-- **Docker Compose**: 2.0+
-- **Memory**: 4GB RAM minimum
-- **Storage**: 10GB free space
-
-### Local Development
-
-- **Node.js**: 20+
-- **Python**: 3.11+
-- **npm**: 10+
-- **uv**: Python package manager
+---
 
 ## Docker Installation
 
-<Tabs>
-  <TabItem label="Linux/macOS">
-    ```bash
-    # Clone repository
-    git clone https://github.com/elad12390/online-research.git
-    cd online-research
-    
-    # Copy environment file
-    cp .env.example .env
-    
-    # Edit .env with your API keys
-    nano .env
-    
-    # Start services
-    docker compose --profile search up -d
-    ```
-  </TabItem>
-  <TabItem label="Windows">
-    ```powershell
-    # Clone repository
-    git clone https://github.com/elad12390/online-research.git
-    cd online-research
-    
-    # Copy environment file
-    copy .env.example .env
-    
-    # Edit .env with your API keys (use notepad or VS Code)
-    notepad .env
-    
-    # Start services
-    docker compose --profile search up -d
-    ```
-  </TabItem>
-</Tabs>
+### Requirements
 
-## Local Development Setup
+- Docker 20.10+
+- Docker Compose 2.0+
+- 4GB RAM minimum
+- One API key (Anthropic, OpenAI, or Google)
 
-For development or advanced customization:
+### Steps
 
-<Steps>
+```bash
+# Clone
+git clone https://github.com/elad12390/online-research.git
+cd online-research
 
-1. **Clone and install Node.js dependencies**
+# Configure
+cp .env.example .env
+```
 
-   ```bash
-   git clone https://github.com/elad12390/online-research.git
-   cd online-research
-   npm install
-   ```
+Edit `.env` and add your API key:
 
-2. **Install Python dependencies**
+```bash
+ANTHROPIC_API_KEY=sk-ant-api03-...
+# or OPENAI_API_KEY=sk-...
+# or GOOGLE_API_KEY=AIza...
+```
 
-   ```bash
-   # Using uv (recommended)
-   pip install uv
-   uv pip install "mcp-agent[anthropic,openai,google]"
-   
-   # Or using pip
-   pip install mcp-agent anthropic openai google-generativeai
-   ```
+Start:
 
-3. **Configure environment**
+```bash
+docker compose --profile search up -d
+```
 
-   ```bash
-   cp .env.example .env.local
-   ```
+Open [localhost:3000](http://localhost:3000).
 
-   Edit `.env.local`:
+### Verify It Works
 
-   ```bash
-   # Research directory (outside project folder)
-   RESEARCH_DIR=/path/to/your/research
-   
-   # AI Provider Keys (at least one required)
-   ANTHROPIC_API_KEY=sk-ant-...
-   OPENAI_API_KEY=sk-...
-   GOOGLE_API_KEY=AIza...
-   ```
+```bash
+# Health check
+curl http://localhost:3000/api/health
 
-4. **Create research directory**
+# Should return: {"status":"ok",...}
+```
 
-   ```bash
-   mkdir -p ~/research
-   ```
+---
 
-5. **Start development server**
+## Local Development
 
-   ```bash
-   npm run dev
-   ```
+For hacking on Research Portal itself.
 
-6. **Open in browser**
+### Requirements
 
-   Navigate to [http://localhost:3000](http://localhost:3000)
+- Node.js 20+
+- Python 3.11+
+- npm 10+
 
-</Steps>
+### Steps
+
+```bash
+# Clone and install
+git clone https://github.com/elad12390/online-research.git
+cd online-research
+npm install
+
+# Python dependencies
+pip install uv
+uv pip install "mcp-agent[anthropic,openai,google]"
+
+# Configure
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+
+```bash
+RESEARCH_DIR=/path/to/your/research
+ANTHROPIC_API_KEY=sk-ant-api03-...
+```
+
+Create the research directory:
+
+```bash
+mkdir -p ~/research
+```
+
+Start:
+
+```bash
+npm run dev
+```
+
+Open [localhost:3000](http://localhost:3000).
+
+---
 
 ## Directory Structure
 
-After installation, your project structure should look like:
+After setup:
 
 ```
 your-machine/
-├── dev/
-│   └── online-research/          # Application code
-│       ├── app/                  # Next.js routes
-│       ├── components/           # React components
-│       ├── lib/                  # Core libraries
-│       ├── mcp-servers/          # MCP server implementations
-│       ├── scripts/              # Research agent scripts
-│       └── .env.local            # Local configuration
+├── online-research/     # App code
+│   ├── app/
+│   ├── lib/
+│   └── .env.local
 │
-└── research/                      # Research projects (RESEARCH_DIR)
+└── research/            # Your research (RESEARCH_DIR)
     ├── project-1/
     │   ├── metadata.json
-    │   ├── README.md
-    │   └── index.html
+    │   └── README.md
     └── project-2/
-        └── ...
 ```
 
-:::caution[Keep directories separate]
-The research directory should be **outside** the application code directory. This allows:
-- Independent backups
-- Git separation
-- Multiple instances sharing research
-:::
+Keep `research/` separate from app code. Your research survives app updates.
 
-## Verifying Installation
-
-After installation, verify everything is working:
-
-### Check the Portal
-
-1. Open [http://localhost:3000](http://localhost:3000)
-2. You should see the Research Portal interface
-3. The sidebar should show "No projects yet"
-
-### Check API Health
-
-```bash
-curl http://localhost:3000/api/health
-```
-
-Expected response:
-```json
-{
-  "status": "ok",
-  "projectCount": 0,
-  "researchDir": "/path/to/research",
-  "timestamp": "2025-01-01T00:00:00.000Z"
-}
-```
-
-### Check SearXNG (if using search profile)
-
-Open [http://localhost:8080](http://localhost:8080) - you should see the SearXNG search interface.
+---
 
 ## Troubleshooting
 
-### Port Already in Use
+### Port 3000 in use
 
 ```bash
-# Find process using port 3000
+# Find what's using it
 lsof -i :3000
 
-# Kill the process
-kill -9 <PID>
-
-# Or change port in .env
-PORTAL_PORT=3001
+# Kill it, or change port
+PORTAL_PORT=3001 docker compose --profile search up -d
 ```
 
-### Docker Build Fails
+### API key not working
+
+Check the format:
+- Anthropic: `sk-ant-api03-...` or `sk-ant-oat01-...`
+- OpenAI: `sk-...` or `sk-proj-...`
+- Google: `AIza...`
+
+Make sure there are no extra spaces or quotes.
+
+### Docker build fails
 
 ```bash
-# Clean Docker cache
+# Clean slate
 docker system prune -a
-
-# Rebuild without cache
 docker compose build --no-cache
+docker compose --profile search up -d
 ```
 
-### Missing API Key Error
-
-1. Check `.env` or `.env.local` exists
-2. Verify API key format:
-   - Anthropic: `sk-ant-api03-...` or `sk-ant-oat01-...`
-   - OpenAI: `sk-...`
-   - Google: `AIza...`
-3. Restart the server after adding keys
-
-### Research Directory Not Found
+### Research directory not found
 
 ```bash
-# Check RESEARCH_DIR in .env
-echo $RESEARCH_DIR
+# Check your .env
+cat .env | grep RESEARCH_DIR
 
-# Create if missing
-mkdir -p ~/research
-
-# Verify in .env.local
-RESEARCH_DIR=/Users/yourname/research
+# Make sure it exists
+mkdir -p ./research  # or wherever you set it
 ```
+
+### SearXNG won't start
+
+```bash
+# Check logs
+docker compose logs searxng
+
+# Common fix: permissions
+chmod -R 755 ./searxng
+```
+
+---
 
 ## Next Steps
 
-- [Configuration Guide](/online-research/guides/configuration/) - Customize your setup
-- [Docker Deployment](/online-research/guides/docker/) - Production Docker setup
-- [Research Agents](/online-research/guides/research-agents/) - How AI agents work
+- [Configuration](/online-research/guides/configuration/) — All the options
+- [MCP Integration](/online-research/guides/mcp-integration/) — Connect Claude Desktop
+- [Docker Deployment](/online-research/guides/docker/) — Production setup

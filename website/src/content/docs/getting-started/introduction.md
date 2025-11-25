@@ -1,116 +1,59 @@
 ---
-title: Introduction
-description: Learn about Research Portal and its capabilities.
+title: What is Research Portal?
+description: Automated research that actually works. No babysitting required.
 ---
 
-Research Portal is an AI-powered research assistant that combines web search, multiple LLM providers, and a beautiful web interface for organizing and browsing your research findings.
+Research Portal is a self-hosted tool that turns research tasks into structured reports. You give it a topic, it searches the web, reads sources, and writes up findings. You come back to organized documentation instead of 50 open tabs.
 
-## What is Research Portal?
+## The Problem It Solves
 
-Research Portal helps you conduct automated research by deploying AI agents that:
+Research sucks. Not the learning part — the grunt work part.
 
-- **Search the web** using private, self-hosted SearXNG
-- **Synthesize findings** into well-organized documents
-- **Track progress** in real-time as research happens
-- **Store results** in markdown and HTML for easy access
+You start with a simple question: "What's the best X for Y?" Two hours later, you're drowning in browser tabs, half-remembered facts, and a messy Google Doc that somehow got worse as you added to it.
 
-## Key Features
+AI chatbots help, but they hallucinate, can't access current information, and forget everything between sessions. You end up copy-pasting back and forth, manually fact-checking, losing context.
 
-### AI Research Wizard
+## How Research Portal Is Different
 
-Start a research project by simply describing what you want to learn. The AI agent will:
+**It does the whole job, not just pieces.**
 
-1. Search multiple sources across the web
-2. Analyze and synthesize information
-3. Generate comprehensive reports
-4. Update progress in real-time
+When you start a research task, an AI agent:
+1. Searches the web using real search engines (via self-hosted SearXNG)
+2. Actually reads and analyzes the sources it finds
+3. Writes structured reports with proper organization
+4. Saves everything locally in markdown/HTML you can browse anytime
 
-### Multi-Provider LLM Support
+You're not prompting a chatbot. You're delegating to an autonomous agent that handles the research workflow end-to-end.
 
-Choose from multiple AI providers based on your needs:
+**It runs on your machine.**
 
-- **Anthropic Claude** - Best for complex, nuanced research
-- **OpenAI GPT** - Great for general research and coding
-- **Google Gemini** - Fast iterations and multimodal support
+No data leaves your infrastructure. SearXNG handles web search locally. Your research stays in your research directory. No subscriptions, no cloud lock-in, no "we updated our privacy policy" emails.
 
-### Private Web Search
+**It's transparent.**
 
-Research Portal includes SearXNG, a privacy-respecting metasearch engine that:
+Watch the agent work in real-time. See every search query, every source it reads, every decision it makes. If something looks wrong, you'll know immediately.
 
-- Aggregates results from multiple search engines
-- Keeps your searches private
-- Runs entirely on your infrastructure
+## Who It's For
 
-### MCP Integration
+- **Developers** evaluating tools, frameworks, or services
+- **Product people** doing competitive research or market analysis  
+- **Anyone** who regularly needs to research topics and document findings
 
-Expose your research library to AI assistants via the Model Context Protocol (MCP):
+If you've ever thought "I wish I could just tell an AI to figure this out and come back with a report" — that's what this does.
 
-- Works with Claude Desktop
-- Compatible with OpenCode and other MCP clients
-- Allows AI assistants to search and read your research
+## What You Need
 
-## Architecture Overview
+- Docker (that's it for the quick setup)
+- An API key from Anthropic, OpenAI, or Google
+- A topic you want researched
 
-Research Portal uses a two-system architecture:
+## What You Get
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   Research Portal (Next.js)                   │
-│                                                               │
-│  ┌───────────────────────────────────────────────────────┐   │
-│  │              Frontend (React Components)               │   │
-│  │  Sidebar | DocumentView | ResearchPanel | CommandPalette │ │
-│  └───────────────────────────────────────────────────────┘   │
-│                              │                                 │
-│              ┌───────────────┴───────────────┐                │
-│              ▼                               ▼                │
-│   ┌──────────────────┐        ┌──────────────────────┐       │
-│   │ Research Portal  │        │  Research Wizard     │       │
-│   │ (File-based)     │        │  (Database-driven)   │       │
-│   │                  │        │                      │       │
-│   │ Browse projects  │        │ AI agent orchestration│      │
-│   │ View documents   │        │ Progress tracking     │      │
-│   │ Search & filter  │        │ Chat interface        │      │
-│   └──────────────────┘        └──────────────────────┘       │
-└─────────────────────────────────────────────────────────────┘
-```
+- A local web interface for starting research and browsing results
+- Real-time progress tracking while agents work
+- Organized markdown/HTML reports saved to your filesystem
+- MCP integration so Claude Desktop can access your research library
 
-### Research Portal (File-based)
+No complex setup. No infrastructure to manage. Clone, configure one API key, run.
 
-The portal system scans your research directory for projects and:
-
-- Displays projects with metadata
-- Renders markdown and HTML files
-- Supports drag-and-drop reordering
-- Tracks favorites and recent files
-
-### Research Wizard (Database-driven)
-
-The wizard system manages active research sessions:
-
-- Spawns AI agents for research tasks
-- Tracks progress in SQLite database
-- Streams agent activities in real-time
-- Supports conversation continuation
-
-## Use Cases
-
-### Product Research
-
-"Find the best indoor grills for apartments in 2024, focusing on smoke reduction and compact size."
-
-### Market Analysis
-
-"Research the current state of the AI coding assistant market, including key players and trends."
-
-### Technical Documentation
-
-"Create a comprehensive guide to setting up Kubernetes on bare metal."
-
-### Competitive Analysis
-
-"Compare the top 5 project management tools for small teams."
-
-## Getting Started
-
-Ready to start? Check out the [Quick Start guide](/online-research/getting-started/quick-start/) to get Research Portal running in minutes.
+**Ready?** [Get started in 2 minutes →](/online-research/getting-started/quick-start/)

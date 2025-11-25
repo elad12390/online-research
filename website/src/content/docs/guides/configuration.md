@@ -1,249 +1,168 @@
 ---
 title: Configuration
-description: Complete guide to configuring Research Portal.
+description: All the knobs you can turn.
 ---
 
-This guide covers all configuration options for Research Portal.
+Research Portal uses environment variables for configuration. Edit `.env` (Docker) or `.env.local` (local development).
 
-## Environment Variables
+## The Essentials
 
-Environment variables are loaded from `.env.local` (development) or system variables (production).
-
-### Required Variables
-
-#### `RESEARCH_DIR`
-
-**Type**: String (absolute path)  
-**Default**: `./research`
-
-Directory where research projects are stored. Should be outside the application code.
+### Where Research Goes
 
 ```bash
-RESEARCH_DIR=/Users/username/research
+RESEARCH_DIR=/path/to/your/research
 ```
 
-:::tip[Directory Structure]
-```
-/Users/username/
-├── dev/online-research/     # Application code
-└── research/                 # Research projects (RESEARCH_DIR)
-    ├── project-1/
-    └── project-2/
-```
-:::
+This is where all research projects are saved. Keep it outside the app directory so your research survives updates/reinstalls.
+
+**Docker default:** `./research` (relative to project root)  
+**Recommendation:** Use an absolute path like `~/research` or `/home/user/research`
 
 ### AI Provider Keys
 
-At least one provider key is required:
-
-#### `ANTHROPIC_API_KEY`
-
-**Format**: `sk-ant-oat01-...` (OAuth) or `sk-ant-api03-...` (API key)  
-**Get it at**: https://console.anthropic.com/settings/keys
+You need at least one. Add more if you want to switch between providers.
 
 ```bash
+# Anthropic Claude (recommended for research)
 ANTHROPIC_API_KEY=sk-ant-api03-...
-```
 
-#### `OPENAI_API_KEY`
-
-**Format**: `sk-...`  
-**Get it at**: https://platform.openai.com/api-keys
-
-```bash
+# OpenAI
 OPENAI_API_KEY=sk-proj-...
+
+# Google Gemini
+GOOGLE_API_KEY=AIza...
 ```
 
-#### `GOOGLE_API_KEY`
+**Where to get keys:**
+- Anthropic: [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
+- OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- Google: [makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
 
-**Format**: `AIza...`  
-**Get it at**: https://makersuite.google.com/app/apikey
+---
+
+## Search Engines
+
+Control which search engines SearXNG uses. All boolean (`true`/`false`).
 
 ```bash
-GOOGLE_API_KEY=AIzaSy...
+# General search
+SEARCH_GOOGLE=true
+SEARCH_BING=true
+SEARCH_DUCKDUCKGO=true
+
+# Reference
+SEARCH_WIKIPEDIA=true
+
+# Code
+SEARCH_GITHUB=true
+SEARCH_STACKOVERFLOW=true
+
+# Optional (disabled by default)
+SEARCH_ARXIV=false    # Academic papers
+SEARCH_REDDIT=false   # Community discussions
 ```
 
-### Optional Variables
+More engines = more comprehensive results, but slower searches.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Server port |
-| `PORTAL_PORT` | `3000` | Docker portal port |
-| `SEARXNG_PORT` | `8080` | SearXNG port |
-| `DATABASE_URL` | `file:./research-wizard.db` | SQLite database location |
-| `NODE_ENV` | `development` | Environment mode |
+---
 
-## MCP Agent Configuration
+## Model Selection
 
-The `mcp_agent.config.yaml` file configures the research agent:
+Configure which AI models to use in `mcp_agent.config.yaml`:
 
 ```yaml
-# Execution engine
-execution_engine: asyncio
-
-# MCP Server definitions
-mcp:
-  servers:
-    # Web research tools
-    web-research-assistant:
-      command: "uvx"
-      args: ["web-research-assistant"]
-    
-    # Filesystem tools
-    filesystem:
-      command: "uv"
-      args: ["run", "python", "mcp-servers/filesystem-server.py"]
-
-# LLM configurations
 anthropic:
   default_model: "claude-sonnet-4-5"
 
 openai:
   default_model: "gpt-4o"
-  reasoning_effort: medium
-
-# Logging
-logger:
-  transports: [console]
-  level: debug
 ```
 
 ### Available Models
 
-#### Anthropic Claude
+**Anthropic:**
+| Model | Notes |
+|-------|-------|
+| `claude-opus-4-1` | Most capable, expensive |
+| `claude-sonnet-4-5` | Good balance (default) |
+| `claude-haiku-3-5` | Fast, cheaper |
 
-| Model | Best For |
-|-------|----------|
-| `claude-opus-4-1` | Most capable, highest cost |
-| `claude-sonnet-4-5` | Best balance (recommended) |
-| `claude-haiku-3-5` | Fastest, lowest cost |
+**OpenAI:**
+| Model | Notes |
+|-------|-------|
+| `gpt-4o` | Latest, recommended |
+| `gpt-4-turbo` | Previous gen |
+| `o1` | Reasoning model |
 
-#### OpenAI GPT
+---
 
-| Model | Best For |
-|-------|----------|
-| `gpt-4o` | Latest, most capable |
-| `gpt-4-turbo` | Fast, capable |
-| `o1` | Complex reasoning |
-
-### MCP Servers
-
-#### web-research-assistant
-
-Web search and research tools:
-
-- `web_search()` - Search the web
-- `search_examples()` - Find code/article examples
-- `api_docs()` - Get API documentation
-- `package_info()` - Look up package info
-- `compare_tech()` - Compare technologies
-
-#### filesystem
-
-File operations for research projects:
-
-- `read_file()` - Read file contents
-- `write_file()` - Write files
-- `create_directory()` - Create directories
-- `write_research_metadata()` - Write project metadata
-- `update_research_progress()` - Track progress
-
-## Search Engine Configuration
-
-Configure which search engines SearXNG uses in `.env`:
+## Ports
 
 ```bash
-# Enable/disable search engines
+PORTAL_PORT=3000      # Web interface
+SEARXNG_PORT=8080     # SearXNG search
+```
+
+Change these if you have conflicts with other services.
+
+---
+
+## Full Example
+
+Here's a complete `.env` for Docker:
+
+```bash
+# Where to save research
+RESEARCH_DIR=./research
+
+# Ports
+PORTAL_PORT=3000
+SEARXNG_PORT=8080
+
+# AI Keys (add at least one)
+ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
+OPENAI_API_KEY=sk-proj-xxxxx
+
+# Search engines
 SEARCH_GOOGLE=true
 SEARCH_BING=true
 SEARCH_DUCKDUCKGO=true
 SEARCH_WIKIPEDIA=true
 SEARCH_GITHUB=true
 SEARCH_STACKOVERFLOW=true
-SEARCH_ARXIV=false
-SEARCH_REDDIT=false
 ```
 
-Or edit `searxng/settings.yml` directly for advanced configuration.
+---
 
-## TypeScript Configuration
+## Advanced: Local Development
 
-`tsconfig.json` key settings:
+For running without Docker:
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "strict": true,
-    "paths": {
-      "@/*": ["./*"]
-    }
-  }
-}
+```bash
+# .env.local (not .env)
+
+RESEARCH_DIR=/Users/you/research
+ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
+
+# Database location (optional)
+DATABASE_URL=file:./research-wizard.db
 ```
 
-The `@/*` path alias enables clean imports:
+Then `npm run dev` instead of Docker.
 
-```typescript
-import { useStore } from '@/lib/store';
-import { ResearchProject } from '@/lib/types';
-```
+---
 
-## Tailwind CSS Configuration
+## Environment Variable Reference
 
-`tailwind.config.js` extends with custom Notion-style colors:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RESEARCH_DIR` | `./research` | Where projects are saved |
+| `PORTAL_PORT` | `3000` | Web UI port |
+| `SEARXNG_PORT` | `8080` | Search engine port |
+| `ANTHROPIC_API_KEY` | - | Claude API key |
+| `OPENAI_API_KEY` | - | OpenAI API key |
+| `GOOGLE_API_KEY` | - | Google AI key |
+| `SEARCH_*` | varies | Search engine toggles |
+| `DATABASE_URL` | `file:./research-wizard.db` | SQLite path |
 
-```javascript
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        'notion-bg-primary': 'var(--notion-bg-primary)',
-        'notion-text-primary': 'var(--notion-text-primary)',
-        // ...
-      },
-    },
-  },
-}
-```
-
-Colors are defined as CSS variables in `app/globals.css`.
-
-## Next.js Configuration
-
-`next.config.js` key settings:
-
-```javascript
-const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
-  experimental: {
-    serverComponentsExternalPackages: ['better-sqlite3'],
-  },
-}
-```
-
-`better-sqlite3` is marked as external because it's a native Node.js module.
-
-## Best Practices
-
-### Environment Variables
-
-- Use `.env.local` for development
-- Set system variables for production
-- Never commit API keys to git
-- Use different keys for different environments
-
-### Research Directory
-
-- Use absolute paths
-- Keep separate from application code
-- Back up regularly
-- Set appropriate file permissions
-
-### MCP Agent
-
-- Only enable needed servers
-- Use `debug` logging during development
-- Switch to `info` in production
-- Match model names to your API tier
+See [Environment Variables Reference](/online-research/reference/environment/) for the complete list.
