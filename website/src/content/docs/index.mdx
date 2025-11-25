@@ -1,13 +1,13 @@
 ---
 title: Research Portal
-description: Stop spending hours on research. Let AI agents do the heavy lifting while you focus on what matters.
+description: Stop tab-hopping. Start shipping research.
 template: splash
 hero:
-  tagline: Give it a topic. Get back organized research. AI agents search the web, analyze sources, and write comprehensive reports — all while you do something else.
+  tagline: Describe what you need. Get organized research back. AI agents do the searching, reading, and writing while you do literally anything else.
   image:
     file: ../../assets/houston.webp
   actions:
-    - text: Get Started in 2 Minutes
+    - text: Get Started
       link: /online-research/getting-started/quick-start/
       icon: right-arrow
       variant: primary
@@ -18,53 +18,65 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Why Research Portal?
+## The old way sucks
 
-You need to research something. Maybe it's comparing products, understanding a market, or learning a new technology. The old way: open 47 browser tabs, copy-paste quotes into a doc, lose track of sources, waste half your day.
+You need to research something. You open Google. Three hours later: 47 tabs, a messy doc, half-remembered facts, and the growing suspicion you missed something important.
 
-**The new way:** Tell Research Portal what you need. Come back to a structured report with sources, comparisons, and actionable insights.
+**Research Portal fixes this.** Tell it what you need. Walk away. Come back to structured findings with sources.
 
 <CardGrid stagger>
-	<Card title="Actually Autonomous" icon="rocket">
-		Not another chatbot. These agents search, read, analyze, and write without hand-holding. You start it and walk away.
+	<Card title="Actually works autonomously" icon="rocket">
+		Not a chatbot you babysit. Real agents that search, read, cross-reference, and write reports end-to-end.
 	</Card>
-	<Card title="Your Data Stays Yours" icon="magnifier">
-		Self-hosted search via SearXNG. No queries sent to Google's servers. No tracking. Run it entirely on your machine.
+	<Card title="Your machine, your data" icon="magnifier">
+		Self-hosted SearXNG for search. No queries hit Big Tech servers. Everything stays local.
 	</Card>
-	<Card title="Watch It Think" icon="approve-check">
-		See exactly what the agent is doing in real-time. Every search, every source, every decision — fully transparent.
+	<Card title="See everything it does" icon="approve-check">
+		Watch searches happen, sources get read, decisions get made. Full transparency, zero black box.
 	</Card>
-	<Card title="Use Your Favorite Model" icon="puzzle">
-		Claude, GPT-4, Gemini — use whatever you're already paying for. Switch models mid-project if you want.
+	<Card title="Use models you're already paying for" icon="puzzle">
+		Claude, GPT-4, Gemini — plug in your API key and go. Switch anytime.
 	</Card>
 </CardGrid>
 
-## 30 Seconds to Your First Research
+---
+
+## How it works
 
 ```bash
-git clone https://github.com/elad12390/online-research.git
-cd online-research && ./setup.sh
+git clone https://github.com/elad12390/online-research.git && cd online-research && ./setup.sh
 ```
 
-Open `localhost:3000`, enter a topic, hit go. That's it.
+**That's the setup.** Open `localhost:3000`, describe your research topic, hit go.
 
-## What Can You Research?
+The agent searches the web, reads what it finds, writes up findings as markdown/HTML, saves everything locally. You browse results in a clean interface whenever you want.
 
-**Product comparisons** — "Best espresso machines under $500 for small kitchens"
+---
 
-**Market research** — "AI coding assistant landscape in 2024"
+## Built for people who research often
 
-**Technical deep-dives** — "Kubernetes vs Docker Swarm for a 10-person startup"
+**Developers** comparing tools, frameworks, services before committing.
 
-**Buying decisions** — "Electric cars with best range-to-price ratio"
+**Product people** doing competitive analysis, market research, user research synthesis.
 
-Anything you'd normally spend hours Googling.
+**Anyone** tired of the Google → tabs → messy doc → forgot what I read loop.
 
-## How It Works
+---
 
-1. **You describe what you need** — Be specific or vague, the agent adapts
-2. **Agent searches and reads** — Uses SearXNG to find sources, actually reads them
-3. **Agent writes and organizes** — Creates structured markdown/HTML reports
-4. **You review and use** — Everything saved locally, browse anytime
+## What you get
 
-No subscription. No cloud lock-in. Your research, your machine.
+**Structured reports** — Not chat transcripts. Actual organized documents with sections, comparisons, sources.
+
+**Plain files** — Markdown and HTML in folders. Git-friendly. Survives if you uninstall the app.
+
+**MCP integration** — Claude Desktop can search your research library. Your past research becomes context for future AI conversations.
+
+**Real-time progress** — Watch it work or check back later. Either way, you'll know exactly where things stand.
+
+---
+
+## What you don't get
+
+No cloud sync. No team features. No mobile app. No subscription.
+
+This is a power-user tool for people who want research automation without giving up control. If that's you, [get started →](/online-research/getting-started/quick-start/)
