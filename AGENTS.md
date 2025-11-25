@@ -7,7 +7,7 @@ This file documents how research agents interact with the Research Portal.
 **CRITICAL TECHNOLOGY**: This project uses **`mcp-agent`**, NOT Claude Code (cc). The research agent is a Python script that uses the mcp-agent library to orchestrate LLM calls and MCP tool usage.
 
 **IMPORTANT**: The actual research prompt that agents use is in:
-- **`scripts/research-prompt.txt`** - User message template with instructions
+- **`scripts/prompts/research-instruction.txt`** - User message template with instructions
 
 ## Architecture & Data Storage
 
@@ -16,8 +16,8 @@ This file documents how research agents interact with the Research Portal.
 The application uses TWO distinct systems that serve different purposes:
 
 #### 1. Research Wizard (Live Research Sessions)
-**Location**: `/Users/eladbenhaim/research/`
-**Database**: `/Users/eladbenhaim/research/research-wizard.db`
+**Location**: `$RESEARCH_DIR` (default: `./research`)
+**Database**: `$RESEARCH_DIR/research-wizard.db`
 **Purpose**: Active research sessions with real-time chat interface
 
 - Live research chat at `/research/[id]` routes
@@ -27,12 +27,12 @@ The application uses TWO distinct systems that serve different purposes:
 - Managed by `lib/research-wizard/research-manager.ts`
 
 #### 2. Research Portal (Historical Projects)
-**Location**: `/Users/eladbenhaim/dev/online-research/research-projects/`
+**Location**: Same as Research Wizard (`$RESEARCH_DIR`)
 **Purpose**: Browse completed research projects as files
 
 - Main portal at `/` route showing project cards
 - File-based system scanning directories for `.html` and `.md` files
-- No database - reads from filesystem directly
+- Reads from filesystem directly
 - Managed by `lib/server/file-scanner.ts`
 
 ### Key Distinction
@@ -191,5 +191,5 @@ Projects appear in the portal with:
 
 **For implementation details, see:**
 - `scripts/research-agent.py` - Main research agent
-- `scripts/research-prompt.txt` - Prompt template
+- `scripts/prompts/research-instruction.txt` - Prompt template
 - `mcp-servers/filesystem-server.py` - MCP tools

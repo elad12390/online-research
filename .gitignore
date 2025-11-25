@@ -1,39 +1,40 @@
 # Dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.js
 
+# Build outputs
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
 # Testing
-/coverage
+coverage/
 
-# Next.js
-/.next/
-/out/
-
-# Production
-/build
-
-# Misc
-.DS_Store
-*.pem
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment variables
+# Environment variables (NEVER commit these)
 .env
+.env.local
 .env*.local
 .env.local.backup
 
-# Install logs
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .install.log
 
-# Database
+# Database files
 *.db
 *.db-journal
-research.db*
+*.sqlite
+*.sqlite3
+
+# Research data (user-generated content)
+research/
+research-projects/
 
 # Python
 __pycache__/
@@ -41,16 +42,39 @@ __pycache__/
 *$py.class
 .venv/
 venv/
-ENV/
-env/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
 
-# IDE
+# IDE & Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.sublime-*
 
-# OS
+# OS generated
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Secrets & Keys
+*.pem
+*.key
+*.crt
+secrets/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Debug
+.debug/
