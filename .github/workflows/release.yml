@@ -19,56 +19,77 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Full history for changelog
 
       - name: Get version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Get previous tag
+        id: prev_tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
       - name: Generate changelog
         id: changelog
-        uses: metcalfc/changelog-generator@v4.3.1
-        with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/release/generate-changelog.sh
+          
+          # Generate changelog
+          if [ -n "${{ steps.prev_tag.outputs.prev_tag }}" ]; then
+            CHANGELOG=$(./scripts/release/generate-changelog.sh "${{ steps.prev_tag.outputs.prev_tag }}" "${{ github.ref_name }}")
+          else
+            CHANGELOG=$(./scripts/release/generate-changelog.sh "" "${{ github.ref_name }}")
+          fi
+          
+          # Save to file for the release
+          echo "$CHANGELOG" > CHANGELOG_RELEASE.md
+          
+          # Also output for use in other steps (escape for GitHub Actions)
+          {
+            echo 'changelog<<EOF'
+            echo "$CHANGELOG"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           name: Release v${{ steps.version.outputs.version }}
           body: |
-            ## What's Changed
-            
             ${{ steps.changelog.outputs.changelog }}
             
-            ## Docker Image
+            ---
             
-            Pull the image:
+            ## Installation
+            
+            ### Docker (Recommended)
+            
             ```bash
             docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
             ```
             
-            Or use latest:
+            Or use `latest`:
             ```bash
             docker pull ghcr.io/${{ github.repository }}:latest
             ```
             
-            ## Quick Start
+            ### Quick Start
             
             ```bash
-            # Clone and setup
             git clone https://github.com/${{ github.repository }}.git
             cd online-research
-            cp .env.example .env
-            # Edit .env with your API keys
-            
-            # Run with docker compose
-            docker compose --profile full up -d
+            ./setup.sh
             ```
+            
+            See [README](https://github.com/${{ github.repository }}#readme) for full documentation.
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -101,7 +122,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
