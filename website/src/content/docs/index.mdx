@@ -1,0 +1,66 @@
+---
+title: Research Portal
+description: AI-powered research assistant with web search, multi-provider LLM support, and a beautiful web interface.
+template: splash
+hero:
+  tagline: Conduct automated research with AI agents, private web search, and a beautiful interface for organizing your findings.
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Get Started
+      link: /online-research/getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/elad12390/online-research
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid stagger>
+	<Card title="AI Research Wizard" icon="rocket">
+		Automated research using Claude, GPT, or Gemini with intelligent web search and content synthesis.
+	</Card>
+	<Card title="Private Search" icon="magnifier">
+		Self-hosted SearXNG with configurable search engines - no tracking, complete privacy.
+	</Card>
+	<Card title="Live Updates" icon="approve-check">
+		Changes appear automatically as AI agents work. Watch research progress in real-time.
+	</Card>
+	<Card title="MCP Integration" icon="puzzle">
+		Works with Claude Desktop, OpenCode, and other MCP clients for seamless AI tool access.
+	</Card>
+</CardGrid>
+
+## Quick Start
+
+```bash
+# Clone and start with Docker
+git clone https://github.com/elad12390/online-research.git
+cd online-research
+./setup.sh
+```
+
+Open [http://localhost:3000](http://localhost:3000) and start researching!
+
+## Multi-Provider Support
+
+Research Portal supports multiple AI providers:
+
+| Provider | Models | Best For |
+|----------|--------|----------|
+| **Anthropic** | Claude Sonnet 4.5, Opus 4.1 | Complex research, nuanced analysis |
+| **OpenAI** | GPT-4o, GPT-4 Turbo | General research, coding tasks |
+| **Google** | Gemini Pro | Fast iterations, multimodal research |
+
+## Architecture
+
+The portal uses a **two-system architecture**:
+
+1. **Research Portal** - File-based project browser with live updates
+2. **Research Wizard** - Database-driven AI agent orchestration
+
+Both systems work together to provide a seamless research experience from creation to consumption.

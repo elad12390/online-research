@@ -1,0 +1,62 @@
+/* Custom styles for Research Portal documentation */
+
+:root {
+	--sl-color-accent-low: #1e3a5f;
+	--sl-color-accent: #3b82f6;
+	--sl-color-accent-high: #93c5fd;
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #eceef2;
+	--sl-color-gray-2: #c0c2c7;
+	--sl-color-gray-3: #888b96;
+	--sl-color-gray-4: #545861;
+	--sl-color-gray-5: #353841;
+	--sl-color-gray-6: #24272f;
+	--sl-color-black: #17181c;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #c7d2fe;
+	--sl-color-accent: #4f46e5;
+	--sl-color-accent-high: #312e81;
+}
+
+/* Hero section styling */
+.hero {
+	background: linear-gradient(135deg, var(--sl-color-gray-6) 0%, var(--sl-color-black) 100%);
+}
+
+/* Code block styling */
+.expressive-code {
+	border-radius: 0.5rem;
+}
+
+/* Card styling */
+.card {
+	border-radius: 0.75rem;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Badge styling */
+.sl-badge {
+	font-weight: 500;
+}
+
+/* Sidebar active link */
+[data-current='true'] {
+	font-weight: 600;
+}
+
+/* Table styling */
+table {
+	border-radius: 0.5rem;
+	overflow: hidden;
+}
+
+th {
+	background: var(--sl-color-gray-6);
+}
