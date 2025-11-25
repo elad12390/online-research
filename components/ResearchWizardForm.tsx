@@ -7,6 +7,38 @@ interface FormData {
   depth: 'quick' | 'standard' | 'deep'
   focus: string
   style: 'comprehensive' | 'comparing' | 'practical'
+  provider: 'anthropic' | 'openai' | 'google' | 'auto'
+  model: string
+}
+
+// Available models per provider (updated November 2025)
+const PROVIDER_MODELS: Record<string, { value: string; label: string }[]> = {
+  anthropic: [
+    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (Recommended)' },
+    { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (Faster/Cheaper)' },
+    { value: 'claude-opus-4-5', label: 'Claude Opus 4.5 (Most Capable)' },
+  ],
+  openai: [
+    { value: 'gpt-4.1', label: 'GPT-4.1 (Recommended)' },
+    { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini (Faster/Cheaper)' },
+    { value: 'o4-mini', label: 'o4-mini (Advanced Reasoning)' },
+  ],
+  google: [
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Recommended)' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Faster/Cheaper)' },
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro (Most Capable)' },
+  ],
+  auto: [
+    { value: 'auto', label: 'Auto-select best model' },
+  ],
+}
+
+// Default model for each provider
+const DEFAULT_MODELS: Record<string, string> = {
+  anthropic: 'claude-sonnet-4-5',
+  openai: 'gpt-4.1',
+  google: 'gemini-2.5-pro',
+  auto: 'auto',
 }
 
 interface ResearchWizardFormProps {
@@ -19,6 +51,8 @@ export const ResearchWizardForm: React.FC<ResearchWizardFormProps> = ({ onSucces
     depth: 'standard',
     focus: '',
     style: 'comprehensive',
+    provider: 'auto',
+    model: 'auto',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,11 +60,24 @@ export const ResearchWizardForm: React.FC<ResearchWizardFormProps> = ({ onSucces
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    
+    // When provider changes, also update model to the default for that provider
+    if (name === 'provider') {
+      setFormData((prev) => ({
+        ...prev,
+        provider: value as FormData['provider'],
+        model: DEFAULT_MODELS[value] || 'auto',
+      }))
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }))
+    }
   }
+  
+  // Get available models for current provider
+  const availableModels = PROVIDER_MODELS[formData.provider] || PROVIDER_MODELS.auto
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -52,7 +99,7 @@ export const ResearchWizardForm: React.FC<ResearchWizardFormProps> = ({ onSucces
 
       const { researchId } = await response.json()
       setSuccess(`✅ Research started! ID: ${researchId}`)
-      setFormData({ topic: '', depth: 'standard', focus: '', style: 'comprehensive' })
+      setFormData({ topic: '', depth: 'standard', focus: '', style: 'comprehensive', provider: 'auto', model: 'auto' })
 
       if (onSuccess) {
         onSuccess(researchId)
@@ -93,6 +140,51 @@ export const ResearchWizardForm: React.FC<ResearchWizardFormProps> = ({ onSucces
 
         <div className="grid grid-cols-2 gap-4">
           <div>
+            <label htmlFor="provider" className="block text-sm font-semibold mb-2 text-gray-900">
+              AI Provider
+            </label>
+            <select
+              id="provider"
+              name="provider"
+              value={formData.provider}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+            >
+              <option value="auto">Auto-detect</option>
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="openai">OpenAI (GPT)</option>
+              <option value="google">Google (Gemini)</option>
+            </select>
+            <p className="text-xs text-gray-600 mt-1">
+              Which AI to use for research
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="model" className="block text-sm font-semibold mb-2 text-gray-900">
+              Model
+            </label>
+            <select
+              id="model"
+              name="model"
+              value={formData.model}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+            >
+              {availableModels.map((model) => (
+                <option key={model.value} value={model.value}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-600 mt-1">
+              Specific model to use
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
             <label htmlFor="depth" className="block text-sm font-semibold mb-2 text-gray-900">
               Research Depth
             </label>
@@ -103,12 +195,12 @@ export const ResearchWizardForm: React.FC<ResearchWizardFormProps> = ({ onSucces
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
             >
-              <option value="quick">Quick (15-20 minutes)</option>
-              <option value="standard">Standard (45-60 minutes)</option>
+              <option value="quick">Quick (15-20 min)</option>
+              <option value="standard">Standard (45-60 min)</option>
               <option value="deep">Deep (2+ hours)</option>
             </select>
             <p className="text-xs text-gray-600 mt-1">
-              How thorough should the research be?
+              How thorough should it be?
             </p>
           </div>
 
@@ -123,12 +215,12 @@ export const ResearchWizardForm: React.FC<ResearchWizardFormProps> = ({ onSucces
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
             >
-              <option value="comprehensive">Comprehensive Documentation</option>
-              <option value="comparing">Comparing & Contrasting</option>
-              <option value="practical">Practical & Actionable</option>
+              <option value="comprehensive">Comprehensive</option>
+              <option value="comparing">Comparing</option>
+              <option value="practical">Practical</option>
             </select>
             <p className="text-xs text-gray-600 mt-1">
-              How should results be presented?
+              How to present results?
             </p>
           </div>
         </div>

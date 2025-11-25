@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  // Enable standalone output for Docker deployment
+  output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['better-sqlite3'],
   },

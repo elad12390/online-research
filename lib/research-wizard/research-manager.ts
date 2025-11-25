@@ -87,8 +87,8 @@ export class ResearchManager {
     const researchId = uuidv4()
     const projectDir = this.createProjectDirectory(config.topic, researchId)
 
-    // Create research record in database
-    this.db.createResearch(researchId, config.topic, projectDir)
+    // Create research record in database (with provider and model)
+    this.db.createResearch(researchId, config.topic, projectDir, config.provider, config.model)
 
     // Initialize progress file
     this.initializeProgressFile(projectDir)
@@ -159,12 +159,15 @@ export class ResearchManager {
     )
     console.log('[ResearchManager] Updated statuses to in_progress/running')
 
-    // Build config from research data
+    // Build config from research data (use stored provider/model)
     const config: ResearchConfig = {
       topic: research.topic,
       depth: 'deep',
       style: 'comprehensive',
+      provider: research.provider,
+      model: research.model,
     }
+    console.log('[ResearchManager] Using stored provider/model:', { provider: research.provider, model: research.model })
 
     console.log('[ResearchManager] Spawning agent in resume mode...')
     // Spawn agent in resume mode (pass resume=true as 5th parameter)
@@ -224,9 +227,9 @@ export class ResearchManager {
         style: config.style,
       })
 
-      // Determine provider and model
-      const provider = config.provider || "openai"
-      const model = config.model || (provider === "openai" ? "gpt-5-mini" : "claude-sonnet-4-5")
+      // Determine provider and model (default to anthropic since it's more commonly configured)
+      const provider = config.provider || "anthropic"
+      const model = config.model || (provider === "anthropic" ? "claude-sonnet-4-5" : "gpt-4o-mini")
       
       // Check for appropriate API key based on provider
       if (provider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {
@@ -278,13 +281,23 @@ export class ResearchManager {
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
           OPENAI_API_KEY: process.env.OPENAI_API_KEY,
           GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+          // Pass SearXNG URL for web-research-assistant MCP server
+          SEARXNG_BASE_URL: process.env.SEARXNG_BASE_URL || 'http://localhost:8847/search',
         },
         cwd: projectRoot, // Project root for mcp_agent.config.yaml
       })
 
       // Handle stdout (JSON messages)
       let buffer = ''
-      let suppressNextLines = 0 // Track if we should suppress upcoming lines (for multi-line non-JSON)
+      let lastToolName: string | null = null // Track tool name from streaming output
+      let pendingToolCall: { tool: string, args: Record<string, string> } | null = null
+      let inToolsCallParams = false // Track if we're inside tools/call params
+      let inArguments = false // Track if we're inside arguments block
+      let lastToolResultId: string | null = null // Track tool_use_id for results
+      
+      // Multi-line result buffering
+      let resultBuffer: string | null = null // Accumulate multi-line results
+      let resultToolName: string | null = null // Tool for the buffered result
       
       pythonProcess.stdout.on('data', (data: Buffer) => {
         buffer += data.toString()
@@ -296,23 +309,442 @@ export class ResearchManager {
         for (const line of lines) {
           if (!line.trim()) continue
           
-          // Check if this is a noisy line we should suppress
+          // Check if this is a noisy line we should suppress (tool schemas, etc.)
           const isToolSchemaNoise = 
             line.includes('"type": "function"') ||
             line.includes('"parameters": {') ||
             line.includes('"properties": {') ||
-            line.includes('"title":') ||
-            line.includes('"description":') ||
+            line.includes('"inputSchema"') ||
+            line.includes('"outputSchema"') ||
             line.includes('"required": [') ||
             line.match(/^\s*[{}\[\],]\s*$/) || // Just brackets/braces
-            line.includes('"reasoning"') ||
-            line.includes('"max_releases"')
+            line.includes('"max_releases"') ||
+            line.includes('"default":') ||
+            (line.includes('"type":') && !line.includes('"type": "tool_result"') && !line.includes('"type": "tool_use"'))
           
           if (isToolSchemaNoise) {
-            // Skip noisy tool schema lines
             continue
           }
           
+          // ===== PATTERN 1: OpenAI format - "tool_name": "xxx" =====
+          const toolNameMatch = line.match(/"tool_name":\s*"([a-zA-Z0-9_.-]+)"/)
+          if (toolNameMatch) {
+            const toolName = toolNameMatch[1]
+            lastToolName = toolName
+            pendingToolCall = { tool: toolName, args: {} }
+            inToolsCallParams = true
+            continue
+          }
+          
+          // ===== PATTERN 2: Anthropic format - detect tools/call then "name" =====
+          if (line.includes('"method": "tools/call"')) {
+            inToolsCallParams = true
+            continue
+          }
+          
+          // Capture tool name from "name": "xxx" inside params (Anthropic format)
+          // Only capture if we're in tools/call context and it's not a tool schema
+          if (inToolsCallParams && !pendingToolCall) {
+            const nameMatch = line.match(/^\s*"name":\s*"([a-zA-Z0-9_.-]+)"/)
+            if (nameMatch) {
+              const toolName = nameMatch[1]
+              // Skip if it looks like a method name
+              if (!toolName.includes('/')) {
+                lastToolName = toolName
+                pendingToolCall = { tool: toolName, args: {} }
+              }
+              continue
+            }
+          }
+          
+          // Detect "arguments": { block
+          if (pendingToolCall && line.includes('"arguments":')) {
+            inArguments = true
+            // Don't continue - might have args on same line
+          }
+          
+          // ===== CAPTURE ARGUMENTS =====
+          // Capture args when we have a pendingToolCall (don't require inArguments 
+          // because some streaming formats emit arguments before the "arguments:" block marker)
+          if (pendingToolCall) {
+            // Capture "query" for web_search - handle escaped quotes properly
+            // Use a more robust approach: find the value after "query": and handle escapes
+            if (line.includes('"query":')) {
+              const queryStartIdx = line.indexOf('"query":')
+              const afterQuery = line.substring(queryStartIdx + 8).trim()
+              if (afterQuery.startsWith('"')) {
+                // Find the closing quote (not escaped)
+                let value = ''
+                let i = 1 // skip opening quote
+                let escaped = false
+                while (i < afterQuery.length) {
+                  const char = afterQuery[i]
+                  if (escaped) {
+                    value += char
+                    escaped = false
+                  } else if (char === '\\') {
+                    escaped = true
+                  } else if (char === '"') {
+                    break // end of string
+                  } else {
+                    value += char
+                  }
+                  i++
+                }
+                if (value) {
+                  pendingToolCall.args.query = value
+                }
+              }
+            }
+            
+            // Capture "url" for crawl_url
+            const urlMatch = line.match(/"url":\s*"([^"]+)"/)
+            if (urlMatch) {
+              pendingToolCall.args.url = urlMatch[1]
+            }
+            
+            // Capture "path" for file operations
+            const pathMatch = line.match(/"path":\s*"([^"]+)"/)
+            if (pathMatch) {
+              pendingToolCall.args.path = pathMatch[1]
+            }
+            
+            // Capture "reasoning" (useful context)
+            const reasoningMatch = line.match(/"reasoning":\s*"([^"]*(?:\\.[^"]*)*)"/)
+            if (reasoningMatch) {
+              pendingToolCall.args.reasoning = reasoningMatch[1].substring(0, 100) // Truncate
+            }
+            
+            // Capture "title" for write_research_metadata (use same robust parsing as query)
+            if (line.includes('"title":') && !pendingToolCall.args.title) {
+              const titleStartIdx = line.indexOf('"title":')
+              const afterTitle = line.substring(titleStartIdx + 8).trim()
+              if (afterTitle.startsWith('"')) {
+                let value = ''
+                let i = 1
+                let escaped = false
+                while (i < afterTitle.length) {
+                  const char = afterTitle[i]
+                  if (escaped) { value += char; escaped = false }
+                  else if (char === '\\') { escaped = true }
+                  else if (char === '"') { break }
+                  else { value += char }
+                  i++
+                }
+                if (value) {
+                  pendingToolCall.args.title = value
+                }
+              }
+            }
+            
+            // Capture "description" for write_research_metadata
+            if (line.includes('"description":') && !pendingToolCall.args.description) {
+              const descMatch = line.match(/"description":\s*"([^"]*(?:\\.[^"]*)*)"/)
+              if (descMatch) {
+                pendingToolCall.args.description = descMatch[1].substring(0, 100)
+              }
+            }
+            
+            // Capture "category" for write_research_metadata
+            const categoryMatch = line.match(/"category":\s*"([^"]+)"/)
+            if (categoryMatch && !pendingToolCall.args.category) {
+              pendingToolCall.args.category = categoryMatch[1]
+            }
+            
+            // Capture "percentage" for update_research_progress
+            const percentMatch = line.match(/"percentage":\s*(\d+)/)
+            if (percentMatch) {
+              pendingToolCall.args.percentage = percentMatch[1]
+            }
+            
+            // Capture "current_task" for update_research_progress
+            const taskMatch = line.match(/"current_task":\s*"([^"]+)"/)
+            if (taskMatch) {
+              pendingToolCall.args.current_task = taskMatch[1]
+            }
+            
+            // Capture "repo" for github_repo
+            const repoMatch = line.match(/"repo":\s*"([^"]+)"/)
+            if (repoMatch) {
+              pendingToolCall.args.repo = repoMatch[1]
+            }
+            
+            // Capture "filePath" for file write operations
+            const filePathMatch = line.match(/"filePath":\s*"([^"]+)"/)
+            if (filePathMatch && !pendingToolCall.args.filePath) {
+              pendingToolCall.args.filePath = filePathMatch[1]
+            }
+          }
+          
+          // ===== EMIT TOOL CALL when we see closing patterns =====
+          // Anthropic: end of arguments block or start of next message
+          // OpenAI: "method": "tools/call" after tool_name
+          const shouldEmit = pendingToolCall && (
+            (line.includes('"method": "tools/call"') && pendingToolCall.tool) ||
+            (inArguments && (line.match(/^\s*}\s*$/) || line.includes('"meta":')))
+          )
+          
+          if (shouldEmit && pendingToolCall) {
+            // Build description based on tool type and args
+            let toolDescription = pendingToolCall.tool
+            const args = pendingToolCall.args
+            
+            if (args.query) {
+              toolDescription = `${pendingToolCall.tool}: "${args.query}"`
+            } else if (args.url) {
+              toolDescription = `${pendingToolCall.tool}: ${args.url}`
+            } else if (args.path) {
+              toolDescription = `${pendingToolCall.tool}: ${args.path}`
+            } else if (args.filePath) {
+              toolDescription = `${pendingToolCall.tool}: ${args.filePath}`
+            } else if (args.title) {
+              // For write_research_metadata, show title and category if available
+              const extra = args.category ? ` [${args.category}]` : ''
+              toolDescription = `${pendingToolCall.tool}: "${args.title}"${extra}`
+            } else if (args.current_task) {
+              toolDescription = `${pendingToolCall.tool}: ${args.percentage || 0}% - ${args.current_task}`
+              
+              // If progress reaches 100%, mark research as completed
+              // This is a safety net in case research_fully_completed message is missed
+              if (pendingToolCall.tool === 'update_research_progress' && args.percentage === '100') {
+                console.log(`[${correlationId}] Progress hit 100% - marking research as completed`)
+                this.db.updateResearchStatus(researchId, "completed", Date.now())
+                this.db.updateAgentStatus(agentId, "completed", "Research completed successfully")
+              }
+            } else if (args.repo) {
+              toolDescription = `${pendingToolCall.tool}: ${args.repo}`
+            }
+            
+            // Only emit if we have args OR if we explicitly saw the tool
+            if (Object.keys(args).length > 0 || inToolsCallParams) {
+              this.db.logActivity(
+                agentId,
+                "tool_call",
+                toolDescription,
+                { tool: pendingToolCall.tool, args: pendingToolCall.args, source: "streaming" }
+              )
+              console.log(`[${correlationId}] TOOL_CALL: ${toolDescription}`)
+              
+              // Update lastToolName AFTER emitting so results are attributed correctly
+              lastToolName = pendingToolCall.tool
+            }
+            
+            pendingToolCall = null
+            inToolsCallParams = false
+            inArguments = false
+            continue
+          }
+          
+          // ===== CAPTURE TOOL RESULTS =====
+          // MCP format: "structuredContent": { "result": "..." } followed by "isError": false/true
+          // Handle multi-line results by buffering
+          
+          // Check if we're accumulating a multi-line result
+          if (resultBuffer !== null) {
+            // Continue accumulating until we find the closing quote
+            // Add newline to preserve formatting (the original newline was stripped by split)
+            resultBuffer += '\n' + line
+            
+            // Check if this line completes the result (ends with ", or just ")
+            if (line.match(/[^\\]"\s*,?\s*$/) || line.match(/^"\s*,?\s*$/)) {
+              // Result complete - emit it
+              // Use larger limit for read_file to show more content
+              const maxLen = resultToolName === 'read_file' ? 2000 : 500
+              let resultText = resultBuffer
+                .replace(/\\n/g, '\n')
+                .replace(/\\"/g, '"')
+                .replace(/"\s*,?\s*$/, '') // Remove trailing quote and comma
+                .substring(0, maxLen)
+              
+              if (resultText.length >= maxLen) {
+                resultText += '...'
+              }
+              
+              if (resultToolName && resultText.length > 5) {
+                this.db.logActivity(
+                  agentId,
+                  "tool_result",
+                  `${resultToolName} result`,
+                  { tool: resultToolName, result: resultText, source: "streaming" }
+                )
+                console.log(`[${correlationId}] TOOL_RESULT (${resultToolName}): ${resultText.substring(0, 100)}...`)
+              }
+              
+              resultBuffer = null
+              resultToolName = null
+              lastToolName = null
+            }
+            continue
+          }
+          
+          // Check for start of result content
+          const resultStartMatch = line.match(/"result":\s*"(.*)/)
+          if (resultStartMatch && lastToolName) {
+            const afterQuote = resultStartMatch[1]
+            
+            // Check if the result is complete on this line
+            // Look for closing quote that's not preceded by odd number of backslashes
+            // Find the last unescaped quote
+            let resultContent = ''
+            let isComplete = false
+            let i = 0
+            while (i < afterQuote.length) {
+              const char = afterQuote[i]
+              if (char === '\\' && i + 1 < afterQuote.length) {
+                // Escape sequence - add both chars and skip next
+                resultContent += char + afterQuote[i + 1]
+                i += 2
+              } else if (char === '"') {
+                // Unescaped quote - this ends the string
+                isComplete = true
+                break
+              } else {
+                resultContent += char
+                i++
+              }
+            }
+            
+            if (isComplete) {
+              // Single-line result - use larger limit for read_file
+              const maxLen = lastToolName === 'read_file' ? 2000 : 500
+              let resultText = resultContent
+                .replace(/\\n/g, '\n')
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\')
+                .substring(0, maxLen)
+              
+              if (resultText.length >= maxLen) {
+                resultText += '...'
+              }
+              
+              if (resultText.length > 5) {
+                const toolForResult = lastToolName
+                this.db.logActivity(
+                  agentId,
+                  "tool_result",
+                  `${toolForResult} result`,
+                  { tool: toolForResult, result: resultText, source: "streaming" }
+                )
+                console.log(`[${correlationId}] TOOL_RESULT (${toolForResult}): ${resultText.substring(0, 100)}...`)
+                lastToolName = null
+              }
+            } else {
+              // Multi-line result - start buffering
+              resultBuffer = afterQuote
+              resultToolName = lastToolName
+            }
+            continue
+          }
+          
+          // Capture "text" results (used by some MCP responses like read_file)
+          // Handle both single-line and multi-line text content
+          const textStartMatch = line.match(/"text":\s*"(.*)/)
+          if (textStartMatch && lastToolName && !line.includes('"type":')) {
+            const afterQuote = textStartMatch[1]
+            
+            // Use character-by-character parsing to handle escaped quotes properly
+            let textContent = ''
+            let isComplete = false
+            let i = 0
+            while (i < afterQuote.length) {
+              const char = afterQuote[i]
+              if (char === '\\' && i + 1 < afterQuote.length) {
+                // Escape sequence - add both chars and skip next
+                textContent += char + afterQuote[i + 1]
+                i += 2
+              } else if (char === '"') {
+                // Unescaped quote - this ends the string
+                isComplete = true
+                break
+              } else {
+                textContent += char
+                i++
+              }
+            }
+            
+            if (isComplete) {
+              // Single-line text result - use larger limit for read_file
+              const maxLen = lastToolName === 'read_file' ? 2000 : 500
+              let textResult = textContent
+                .replace(/\\n/g, '\n')
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\')
+                .substring(0, maxLen)
+              
+              if (textResult.length >= maxLen) {
+                textResult += '...'
+              }
+              
+              // Only log if it looks like meaningful content
+              if (textResult.length > 20 && !textResult.startsWith('{')) {
+                const toolForText = lastToolName
+                this.db.logActivity(
+                  agentId,
+                  "tool_result",
+                  `${toolForText} returned`,
+                  { tool: toolForText, text: textResult, source: "streaming" }
+                )
+                console.log(`[${correlationId}] TOOL_TEXT (${toolForText}): ${textResult.substring(0, 80)}...`)
+                lastToolName = null
+              }
+            }
+            // Note: Multi-line text buffering could be added here if needed
+            continue
+          }
+          
+          // Capture search results - web_search returns structured data with titles/urls
+          // We want to capture a summary of what was found
+          if (lastToolName && lastToolName.includes('web_search')) {
+            // Capture individual result titles
+            const searchTitleMatch = line.match(/"title":\s*"([^"]+)"/)
+            if (searchTitleMatch && searchTitleMatch[1].length > 5) {
+              console.log(`[${correlationId}] SEARCH_RESULT: ${searchTitleMatch[1].substring(0, 60)}`)
+            }
+            
+            // Capture URLs from search results
+            const searchUrlMatch = line.match(/"url":\s*"(https?:\/\/[^"]+)"/)
+            if (searchUrlMatch) {
+              console.log(`[${correlationId}] SEARCH_URL: ${searchUrlMatch[1].substring(0, 60)}`)
+            }
+          }
+          
+          // Capture crawl_url results - these return page content
+          if (lastToolName && lastToolName.includes('crawl_url')) {
+            // Look for content field which has the crawled text
+            const contentMatch = line.match(/"content":\s*"([^"]{50,})"/)
+            if (contentMatch) {
+              const preview = contentMatch[1].substring(0, 200).replace(/\\n/g, ' ')
+              this.db.logActivity(
+                agentId,
+                "tool_result", 
+                `${lastToolName} fetched page`,
+                { tool: lastToolName, preview: preview + '...', source: "streaming" }
+              )
+              console.log(`[${correlationId}] CRAWL_CONTENT: ${preview.substring(0, 80)}...`)
+              lastToolName = null
+            }
+          }
+          
+          // Check for error results
+          if (line.includes('"isError": true') && lastToolName) {
+            this.db.logActivity(
+              agentId,
+              "tool_error",
+              `${lastToolName} failed`,
+              { tool: lastToolName, error: true, source: "streaming" }
+            )
+            console.log(`[${correlationId}] TOOL_ERROR: ${lastToolName}`)
+            continue
+          }
+          
+          // Capture tool_use_id for correlation (Anthropic format)
+          const toolUseIdMatch = line.match(/"tool_use_id":\s*"([^"]+)"/)
+          if (toolUseIdMatch) {
+            lastToolResultId = toolUseIdMatch[1]
+            continue
+          }
+          
+          // ===== PARSE JSON MESSAGES =====
           try {
             const message = JSON.parse(line)
             

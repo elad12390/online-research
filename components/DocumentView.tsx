@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import purify from 'isomorphic-dompurify';
 import { DocumentHeader } from './DocumentHeader';
 import { DocumentTabs } from './DocumentTabs';
@@ -30,6 +30,30 @@ export function DocumentView({
   const [html, setHtml] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Handle messages from iframe for internal link navigation
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'internal-link-click' && event.data?.href) {
+        const href = event.data.href;
+        // Check if it's a relative link to another file in the project
+        if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('//')) {
+          // Extract filename from href (could be "./file.html", "file.html", "../file.html", etc.)
+          const filename = href.split('/').pop()?.split('#')[0]?.split('?')[0];
+          if (filename && project?.files.includes(filename)) {
+            onFileSelect(filename);
+          }
+        } else {
+          // External link - open in new tab
+          window.open(href, '_blank', 'noopener,noreferrer');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [project, onFileSelect]);
 
   useEffect(() => {
     if (!project || !fileName) {
@@ -184,16 +208,42 @@ export function DocumentView({
              </style>
            `;
            
-           // Inject style after <head> tag or at the beginning if no head
-           if (htmlWithoutScripts.includes('<head>')) {
-             htmlWithoutScripts = htmlWithoutScripts.replace('<head>', '<head>' + darkThemeStyle);
-           } else if (htmlWithoutScripts.includes('<!DOCTYPE')) {
-             htmlWithoutScripts = htmlWithoutScripts.replace('<!DOCTYPE html>', '<!DOCTYPE html>' + darkThemeStyle);
-           } else {
-             htmlWithoutScripts = darkThemeStyle + htmlWithoutScripts;
-           }
-           
-           setHtml(htmlWithoutScripts);
+// Script to intercept link clicks and send to parent
+            const linkInterceptScript = `
+              <script>
+                document.addEventListener('click', function(e) {
+                  var target = e.target;
+                  while (target && target.tagName !== 'A') {
+                    target = target.parentElement;
+                  }
+                  if (target && target.tagName === 'A' && target.href) {
+                    e.preventDefault();
+                    window.parent.postMessage({
+                      type: 'internal-link-click',
+                      href: target.getAttribute('href')
+                    }, '*');
+                  }
+                });
+              </script>
+            `;
+            
+            // Inject style after <head> tag or at the beginning if no head
+            if (htmlWithoutScripts.includes('<head>')) {
+              htmlWithoutScripts = htmlWithoutScripts.replace('<head>', '<head>' + darkThemeStyle);
+            } else if (htmlWithoutScripts.includes('<!DOCTYPE')) {
+              htmlWithoutScripts = htmlWithoutScripts.replace('<!DOCTYPE html>', '<!DOCTYPE html>' + darkThemeStyle);
+            } else {
+              htmlWithoutScripts = darkThemeStyle + htmlWithoutScripts;
+            }
+            
+            // Inject link intercept script before </body> or at the end
+            if (htmlWithoutScripts.includes('</body>')) {
+              htmlWithoutScripts = htmlWithoutScripts.replace('</body>', linkInterceptScript + '</body>');
+            } else {
+              htmlWithoutScripts = htmlWithoutScripts + linkInterceptScript;
+            }
+            
+            setHtml(htmlWithoutScripts);
          } else {
            // For markdown files, use strict sanitization
            const sanitized = purify.sanitize(data.html, { 
@@ -245,9 +295,10 @@ export function DocumentView({
            </div>
           ) : fileName?.endsWith('.html') ? (
             <iframe
+              ref={iframeRef}
               srcDoc={html}
               className="w-full h-full border-0"
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts"
               title={fileName}
             />
           ) : (

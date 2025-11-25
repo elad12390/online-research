@@ -39,6 +39,7 @@ interface Progress {
   completedTasks: string[]
   startedAt: string
   estimatedCompletion: string
+  estimatedMinutesRemaining?: number | null
 }
 
 interface ResearchData {
@@ -268,7 +269,14 @@ export default function ResearchDetailPage({ params }: { params: { id: string } 
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
                 <span>{data.progress.currentTask}</span>
-                <span>{data.progress.percentage}%</span>
+                <div className="flex items-center gap-3">
+                  {data.progress.estimatedMinutesRemaining != null && data.progress.estimatedMinutesRemaining > 0 && (
+                    <span className="text-emerald-400">
+                      ~{data.progress.estimatedMinutesRemaining} min remaining
+                    </span>
+                  )}
+                  <span>{data.progress.percentage}%</span>
+                </div>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-1.5">
                 <div 
@@ -448,8 +456,18 @@ export default function ResearchDetailPage({ params }: { params: { id: string } 
 
             // Tool Result message
             if (isToolResult) {
-              const output = activity.metadata?.output || activity.description
+              // Get output from various possible metadata fields
+              const output = activity.metadata?.result 
+                || activity.metadata?.text 
+                || activity.metadata?.preview
+                || activity.metadata?.output 
+                || activity.description
               const toolName = activity.metadata?.tool || 'Unknown Tool'
+              
+              // Skip empty or duplicate results
+              if (!output || output === `${toolName} result` || output === `${toolName} returned`) {
+                return null
+              }
               
               return (
                 <div 
@@ -472,7 +490,7 @@ export default function ResearchDetailPage({ params }: { params: { id: string } 
                       </div>
                       
                       {/* Collapsible Result */}
-                      <details className="group/output mt-2" open>
+                      <details className="group/output mt-2">
                         <summary className="cursor-pointer text-sm text-gray-400 hover:text-gray-200 select-none flex items-center gap-2 bg-black/20 px-3 py-2 rounded border border-emerald-500/20">
                           <span>View output</span>
                           <span className="text-xs opacity-50 group-open/output:rotate-180 transition-transform">▼</span>

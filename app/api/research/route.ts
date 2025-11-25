@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       depth = 'standard', 
       focus, 
       style = 'comprehensive',
-      provider = 'openai',
+      provider: requestedProvider = 'auto',
       model
     } = body
 
@@ -79,6 +79,26 @@ export async function POST(request: NextRequest) {
         { error: 'Topic is required' },
         { status: 400 }
       )
+    }
+
+    // Auto-detect provider based on available API keys
+    let provider = requestedProvider
+    if (provider === 'auto') {
+      if (process.env.ANTHROPIC_API_KEY) {
+        provider = 'anthropic'
+      } else if (process.env.OPENAI_API_KEY) {
+        provider = 'openai'
+      } else if (process.env.GOOGLE_API_KEY) {
+        provider = 'google'
+      } else {
+        return NextResponse.json(
+          { 
+            error: 'No API key configured',
+            message: 'Please set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY in your environment',
+          },
+          { status: 503 }
+        )
+      }
     }
 
     // Check for appropriate API key based on provider

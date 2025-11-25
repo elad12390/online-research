@@ -15,6 +15,8 @@ export interface Research {
   completedAt?: number
   projectDir: string
   totalAgents: number
+  provider?: "anthropic" | "openai" | "google"
+  model?: string
 }
 
 export interface Agent {
@@ -61,7 +63,9 @@ export class ResearchDatabase {
         createdAt INTEGER NOT NULL,
         completedAt INTEGER,
         projectDir TEXT NOT NULL UNIQUE,
-        totalAgents INTEGER NOT NULL DEFAULT 0
+        totalAgents INTEGER NOT NULL DEFAULT 0,
+        provider TEXT,
+        model TEXT
       );
 
       CREATE TABLE IF NOT EXISTS agents (
@@ -93,13 +97,36 @@ export class ResearchDatabase {
       CREATE INDEX IF NOT EXISTS idx_activities_timestamp 
         ON activities(timestamp DESC);
     `)
+    
+    // Migration: Add provider and model columns if they don't exist (for existing databases)
+    this.migrateAddProviderColumns()
+  }
+  
+  private migrateAddProviderColumns() {
+    try {
+      // Check if columns exist by querying pragma
+      const columns = this.db.prepare("PRAGMA table_info(researches)").all() as any[]
+      const columnNames = columns.map(c => c.name)
+      
+      if (!columnNames.includes('provider')) {
+        this.db.exec("ALTER TABLE researches ADD COLUMN provider TEXT")
+      }
+      if (!columnNames.includes('model')) {
+        this.db.exec("ALTER TABLE researches ADD COLUMN model TEXT")
+      }
+    } catch (err) {
+      // Columns might already exist, ignore error
+      console.error('[ResearchDatabase] Migration error (may be safe to ignore):', err)
+    }
   }
 
   // Research operations
   createResearch(
     id: string,
     topic: string,
-    projectDir: string
+    projectDir: string,
+    provider?: "anthropic" | "openai" | "google",
+    model?: string
   ): Research {
     const now = Date.now()
     const research: Research = {
@@ -109,11 +136,13 @@ export class ResearchDatabase {
       createdAt: now,
       projectDir,
       totalAgents: 0,
+      provider,
+      model,
     }
 
     const stmt = this.db.prepare(`
-      INSERT INTO researches (id, topic, status, createdAt, projectDir, totalAgents)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO researches (id, topic, status, createdAt, projectDir, totalAgents, provider, model)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     stmt.run(
@@ -122,7 +151,9 @@ export class ResearchDatabase {
       research.status,
       research.createdAt,
       research.projectDir,
-      research.totalAgents
+      research.totalAgents,
+      research.provider || null,
+      research.model || null
     )
 
     return research

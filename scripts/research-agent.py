@@ -76,6 +76,7 @@ class ToolCallHandler(logging.Handler):
 
     last_tool_called = None  # Track the last tool that was called
     project_dir: str | None = None  # Will be set by run_research
+    pending_tool_call = False  # Track if we're expecting tool_name in next messages
 
     def emit(self, record):
         try:
@@ -85,6 +86,56 @@ class ToolCallHandler(logging.Handler):
             # Filter out low-level noise but allow logger names containing "mcp_agent"
             if "idempotency_key" in msg or "api_key" in msg:
                 return
+
+            # NEW Pattern: mcp-agent streaming format - "Requesting tool call" followed by tool_name
+            # This catches: [INFO] mcp_agent: [...] Requesting tool call
+            if "Requesting tool call" in msg:
+                ToolCallHandler.pending_tool_call = True
+                return
+
+            # NEW Pattern: Capture "tool_name": "xxx" from streaming output
+            # This catches lines like: "tool_name": "web_search",
+            tool_name_match = re.search(r'"tool_name":\s*"([a-zA-Z0-9_.-]+)"', msg)
+            if tool_name_match:
+                tool_name = tool_name_match.group(1)
+                ToolCallHandler.last_tool_called = tool_name
+                ToolCallHandler.pending_tool_call = False
+
+                activity = {
+                    "type": "tool_call",
+                    "tool": tool_name,
+                    "args": "(streaming - args in separate message)",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+                # PRINT TO STDOUT (for ResearchManager)
+                print(json.dumps(activity) + "\n", flush=True, end="")
+                if ToolCallHandler.project_dir:
+                    write_activity_to_file(ToolCallHandler.project_dir, activity)
+                return
+
+            # NEW Pattern: Capture tool name from "name": "xxx" in tools/call messages
+            # This catches lines like: "name": "crawl_url",
+            if ToolCallHandler.pending_tool_call or '"method": "tools/call"' in msg:
+                name_match = re.search(r'"name":\s*"([a-zA-Z0-9_.-]+)"', msg)
+                if name_match:
+                    tool_name = name_match.group(1)
+                    # Skip if it's just the method name
+                    if tool_name not in ["tools/call", "call"]:
+                        ToolCallHandler.last_tool_called = tool_name
+                        ToolCallHandler.pending_tool_call = False
+
+                        activity = {
+                            "type": "tool_call",
+                            "tool": tool_name,
+                            "args": "(streaming)",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                        print(json.dumps(activity) + "\n", flush=True, end="")
+                        if ToolCallHandler.project_dir:
+                            write_activity_to_file(
+                                ToolCallHandler.project_dir, activity
+                            )
+                        return
 
             # Pattern 1: Tool Execution
             # Try matching "Action: tool_name" format first
@@ -401,7 +452,10 @@ async def message_loop(llm, project_dir: str, request_params):
                             )
 
                         continuation_prompt = continuation_template.format(
-                            user_message=user_message
+                            user_message=user_message,
+                            current_time=datetime.now().strftime(
+                                "%Y-%m-%d %H:%M:%S %Z"
+                            ),
                         )
 
                         print(
@@ -701,6 +755,7 @@ async def run_research(
         style_instruction=style_instructions.get(
             style, style_instructions["comprehensive"]
         ),
+        current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S %Z"),
     )
 
     completed_tasks.append("Created app configuration")
@@ -748,9 +803,13 @@ async def run_research(
 
             system_prompt = system_prompt_file.read_text()
 
+            # Combine system prompt with task-specific instruction (contains multilingual
+            # search strategy, source bias awareness, progress tracking, etc.)
+            full_system_prompt = system_prompt + "\n\n" + instruction
+
             researcher = Agent(
                 name="researcher",
-                instruction=system_prompt,
+                instruction=full_system_prompt,
                 server_names=["web-research-assistant", "filesystem"],
             )
 
@@ -865,7 +924,7 @@ async def run_research(
                     request_params = RequestParams(
                         max_iterations=999999,  # Practically unlimited - agent decides when done
                         temperature=0.7,
-                        maxTokens=100000,  # High limit (within OpenAI's 128k max) - agent writes as much as needed
+                        maxTokens=8192,  # Claude's max output tokens per response
                     )
 
                     # Skip directly to message loop
@@ -924,11 +983,12 @@ async def run_research(
                     # Use generate_str() with RequestParams to allow multiple tool-calling turns
                     from mcp_agent.workflows.llm.augmented_llm import RequestParams
 
-                    # Effectively unlimited - agent decides when research is complete based on prompt
+                    # Effectively unlimited iterations - agent decides when research is complete based on prompt
+                    # maxTokens set to 8192 (Claude's default max output) to avoid Anthropic streaming requirement
                     request_params = RequestParams(
                         max_iterations=999999,  # Practically unlimited - agent decides when done
                         temperature=0.7,
-                        maxTokens=100000,  # High limit (within OpenAI's 128k max) - agent writes as much as needed
+                        maxTokens=8192,  # Claude's max output tokens per response
                     )
 
                     # Load user prompt template (REQUIRED)

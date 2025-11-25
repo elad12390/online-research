@@ -1,0 +1,137 @@
+# Research Portal - Docker Compose
+# 
+# Quick Start:
+#   cp .env.docker.example .env
+#   # Edit .env with your API keys
+#   docker compose up -d
+#
+# With SearXNG:
+#   docker compose --profile search up -d
+#
+# Full stack:
+#   docker compose --profile full up -d
+
+services:
+  # ==========================================================================
+  # Research Portal (Main Application)
+  # ==========================================================================
+  portal:
+    image: research-portal:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: research-portal
+    ports:
+      - "${PORTAL_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - RESEARCH_DIR=/research
+      # API Keys
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - PIXABAY_API_KEY=${PIXABAY_API_KEY:-}
+      # SearXNG URL (internal docker network)
+      - SEARXNG_URL=${SEARXNG_URL:-http://searxng:8080}
+      # SearXNG URL for web-research-assistant MCP server
+      - SEARXNG_BASE_URL=http://searxng:8080/search
+      # Search engine toggles
+      - SEARCH_GOOGLE=${SEARCH_GOOGLE:-true}
+      - SEARCH_BING=${SEARCH_BING:-true}
+      - SEARCH_DUCKDUCKGO=${SEARCH_DUCKDUCKGO:-true}
+      - SEARCH_BRAVE=${SEARCH_BRAVE:-false}
+      - SEARCH_WIKIPEDIA=${SEARCH_WIKIPEDIA:-true}
+      - SEARCH_GITHUB=${SEARCH_GITHUB:-true}
+      - SEARCH_STACKOVERFLOW=${SEARCH_STACKOVERFLOW:-true}
+      - SEARCH_ARXIV=${SEARCH_ARXIV:-false}
+      - SEARCH_REDDIT=${SEARCH_REDDIT:-false}
+      - SEARCH_YOUTUBE=${SEARCH_YOUTUBE:-false}
+    volumes:
+      - ${RESEARCH_DIR:-./research}:/research
+      - portal-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ==========================================================================
+  # SearXNG - Private Search Engine
+  # ==========================================================================
+  searxng:
+    image: searxng/searxng:latest
+    container_name: research-searxng
+    profiles:
+      - search
+      - full
+      - full-tor
+    ports:
+      - "${SEARXNG_PORT:-8080}:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT:-8080}/
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-ultrasecretkey-change-me}
+    volumes:
+      - ./searxng:/etc/searxng:rw
+      - searxng-data:/var/cache/searxng
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ==========================================================================
+  # Tor - Optional proxy for SearXNG to avoid rate limiting
+  # ==========================================================================
+  tor:
+    image: dperson/torproxy:latest
+    container_name: research-tor
+    profiles:
+      - full-tor
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--socks5", "localhost:9050", "--socks5-hostname", "localhost:9050", "-s", "https://check.torproject.org/api/ip"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+  # ==========================================================================
+  # Redis - Optional caching for SearXNG
+  # ==========================================================================
+  redis:
+    image: redis:6.2-alpine
+    container_name: research-redis
+    profiles:
+      - full
+      - full-tor
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  portal-data:
+    name: research-portal-data
+  searxng-data:
+    name: research-searxng-data
+  redis-data:
+    name: research-redis-data
+
+networks:
+  default:
+    name: research-network

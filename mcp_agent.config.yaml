@@ -8,6 +8,10 @@ mcp:
     web-research-assistant:
       command: "uvx"
       args: ["web-research-assistant"]
+      env:
+        # For Docker: use internal network URL
+        # For local dev: override with http://localhost:8847/search
+        SEARXNG_BASE_URL: "http://searxng:8080/search"
     
     filesystem:
       command: "uv"
@@ -17,10 +21,11 @@ mcp:
 anthropic:
   default_model: "claude-sonnet-4-5"
 
-# OpenAI configuration (uses OPENAI_API_KEY from environment)
-openai:
-  default_model: "gpt-5-mini"
-  reasoning_effort: medium
+# OpenAI configuration - commented out to avoid requiring OPENAI_API_KEY
+# Uncomment and set OPENAI_API_KEY environment variable if you want to use OpenAI
+# openai:
+#   default_model: "gpt-4o-mini"
+#   reasoning_effort: medium
 
 # Logging configuration
 logger:

@@ -1,5 +1,6 @@
 You are continuing an EXISTING research project based on a follow-up request.
 
+CURRENT TIME: {current_time}
 FOLLOW-UP REQUEST: {user_message}
 
 CRITICAL INSTRUCTIONS:

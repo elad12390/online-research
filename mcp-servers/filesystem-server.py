@@ -286,7 +286,10 @@ def write_research_metadata(
 
 @mcp.tool()
 def update_research_progress(
-    percentage: int, current_task: str, task_description: str
+    percentage: int,
+    current_task: str,
+    task_description: str,
+    estimated_minutes_remaining: int | None = None,
 ) -> str:
     """
     Update the research progress file to track completion status.
@@ -301,17 +304,18 @@ def update_research_progress(
         percentage: Progress percentage from 0-100 (0=just started, 100=complete)
         current_task: Short name of current task (e.g., "Searching web", "Writing README")
         task_description: Detailed description of what you're doing now
+        estimated_minutes_remaining: Your estimate of how many minutes until completion (optional but encouraged)
 
     Returns:
         Confirmation message
 
     Example:
-        update_research_progress(25, "Web research", "Gathering information about indoor grills")
-        update_research_progress(75, "Writing files", "Creating comparison chart markdown file")
-        update_research_progress(100, "Complete", "All research files created successfully")
+        update_research_progress(25, "Web research", "Gathering information about indoor grills", 15)
+        update_research_progress(75, "Writing files", "Creating comparison chart markdown file", 5)
+        update_research_progress(100, "Complete", "All research files created successfully", 0)
     """
     import json
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     if not ALLOWED_BASE_DIRS:
         return "Warning: No research directory configured, progress not saved"
@@ -319,12 +323,14 @@ def update_research_progress(
     # Progress file is always in the first allowed directory
     progress_file = ALLOWED_BASE_DIRS[0] / ".research-progress.json"
 
-    # Read existing progress to preserve completed tasks list
+    # Read existing progress to preserve completed tasks list and startedAt
     completed_tasks = []
+    started_at = None
     if progress_file.exists():
         try:
             existing = json.loads(progress_file.read_text())
             completed_tasks = existing.get("completedTasks", [])
+            started_at = existing.get("startedAt")
         except:
             pass
 
@@ -332,17 +338,34 @@ def update_research_progress(
     if percentage > 0 and current_task not in completed_tasks and percentage < 100:
         completed_tasks.append(current_task)
 
+    now = datetime.utcnow()
+
+    # Calculate estimated completion time
+    estimated_completion = None
+    if estimated_minutes_remaining is not None and estimated_minutes_remaining > 0:
+        estimated_completion = (
+            now + timedelta(minutes=estimated_minutes_remaining)
+        ).isoformat() + "Z"
+
     progress = {
         "percentage": min(100, max(0, percentage)),
         "currentTask": current_task,
         "currentTaskDescription": task_description,
         "completedTasks": completed_tasks,
-        "updatedAt": datetime.utcnow().isoformat() + "Z",
+        "startedAt": started_at or now.isoformat() + "Z",
+        "updatedAt": now.isoformat() + "Z",
+        "estimatedMinutesRemaining": estimated_minutes_remaining,
+        "estimatedCompletion": estimated_completion,
     }
 
     progress_file.write_text(json.dumps(progress, indent=2))
 
-    return f"Progress updated: {percentage}% - {current_task}"
+    time_str = (
+        f" (~{estimated_minutes_remaining} min remaining)"
+        if estimated_minutes_remaining
+        else ""
+    )
+    return f"Progress updated: {percentage}% - {current_task}{time_str}"
 
 
 def main():
