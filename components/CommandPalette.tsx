@@ -109,7 +109,7 @@ export function CommandPalette({
   onProjectSelect,
   onFileSelect
 }: CommandPaletteProps) {
-  const [isOpen, useIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -118,7 +118,7 @@ export function CommandPalette({
 
   // Sync with store
   useEffect(() => {
-    useIsOpen(isOpen_store);
+    setIsOpen(isOpen_store);
     if (isOpen_store) {
       setTimeout(() => inputRef.current?.focus(), 0);
     }
