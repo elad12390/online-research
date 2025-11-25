@@ -1,6 +1,6 @@
 {
   "name": "research-portal",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Modern Research Portal with Next.js, React, and TypeScript",
   "private": true,
   "scripts": {
