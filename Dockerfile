@@ -103,11 +103,18 @@ COPY --from=python-builder --chown=nextjs:nodejs /app/.venv /app/.venv
 # Add venv to PATH so mcp-agent can find uv and other tools
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Create research directory
-RUN mkdir -p /research && chown nextjs:nodejs /research
+# Create research directory with proper permissions
+# Note: When using volume mounts, ensure host directory has compatible permissions
+RUN mkdir -p /research && \
+    chown -R nextjs:nodejs /research && \
+    chmod 755 /research
+
+# Copy entrypoint script
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 USER nextjs
 
 EXPOSE 3000
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "server.js"]
