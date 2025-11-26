@@ -26,6 +26,35 @@ import { CSS } from '@dnd-kit/utilities';
 import type { ResearchProject } from '@/lib/types';
 import { useStore } from '@/lib/store';
 
+/**
+ * Format time remaining from ISO timestamp
+ */
+function formatTimeRemaining(estimatedCompletion: string): string {
+  try {
+    const now = Date.now();
+    const completionTime = new Date(estimatedCompletion).getTime();
+    const remainingMs = completionTime - now;
+    
+    if (remainingMs <= 0) {
+      return 'finishing...';
+    }
+    
+    const minutes = Math.ceil(remainingMs / 60000);
+    
+    if (minutes < 1) {
+      return '< 1m';
+    } else if (minutes < 60) {
+      return `~${minutes}m`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `~${hours}h ${mins}m` : `~${hours}h`;
+    }
+  } catch {
+    return '';
+  }
+}
+
 interface ProjectTreeProps {
   projects: Record<string, ResearchProject>;
   expandedProjects: Set<string>;
@@ -113,9 +142,40 @@ function SortableProjectItem({
 
         {/* Project Icon & Name */}
         <span className="flex-shrink-0 text-sm">📁</span>
-        <span className="flex-1 text-sm font-medium truncate" title={project.name}>
-          {project.name}
-        </span>
+        <div className="flex-1 flex flex-col min-w-0">
+          <span className="text-sm font-medium truncate" title={project.name}>
+            {project.name}
+          </span>
+          
+          {/* Progress indicator */}
+          {project.progress && project.progress.percentage < 100 && (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="flex-1 h-1 bg-notion-border rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-notion-blue transition-all duration-300"
+                  style={{ width: `${project.progress.percentage}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-notion-text-tertiary whitespace-nowrap">
+                {project.progress.percentage}%
+              </span>
+            </div>
+          )}
+          
+          {/* Current task - only show if not completed */}
+          {project.progress && project.progress.percentage < 100 && project.progress.currentTask && (
+            <span className="text-[10px] text-notion-text-tertiary truncate mt-0.5">
+              {project.progress.currentTask}
+            </span>
+          )}
+          
+          {/* Time remaining estimate */}
+          {project.progress && project.progress.percentage < 100 && project.progress.estimatedCompletion && (
+            <span className="text-[10px] text-notion-text-tertiary truncate">
+              ⏱️ {formatTimeRemaining(project.progress.estimatedCompletion)}
+            </span>
+          )}
+        </div>
         
         {/* Delete Button */}
         {onProjectDelete && (
