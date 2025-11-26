@@ -43,6 +43,8 @@ Open [localhost:3000](http://localhost:3000). Done.
 3. Click **Start Research**
 4. Watch the agent work, or go make coffee
 
+![Research Wizard](../../../assets/screenshot-wizard.png)
+
 When it's done, you'll have a structured report in the sidebar. Click to read.
 
 ## What Just Happened?

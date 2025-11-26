@@ -3,6 +3,21 @@ title: Features
 description: What Research Portal actually does for you.
 ---
 
+## Gallery
+
+See the interface in action:
+
+![Main Portal](../../assets/screenshot-main.png)
+*The main research portal — browse your completed projects with real-time progress tracking*
+
+![Research Wizard](../../assets/screenshot-wizard.png)
+*The research wizard — configure your research topic, AI provider, depth, and style*
+
+![Wide Desktop View](../../assets/screenshot-desktop-wide.png)
+*Full desktop interface with detailed project sidebar and research hub*
+
+---
+
 ## Autonomous Research
 
 **The core feature.** You describe what you need to know, and an AI agent figures out how to research it.

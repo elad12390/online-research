@@ -99,9 +99,16 @@ export function Sidebar({ onProjectSelect, onFileSelect }: SidebarProps) {
     <aside className="h-full w-full bg-notion-bg-secondary border-r border-notion-border flex flex-col overflow-hidden shadow-sm">
       {/* Header */}
       <div className="px-4 py-4 border-b border-notion-border flex-shrink-0">
-        <h1 className="text-lg font-semibold text-notion-text-primary">
-          Research
-        </h1>
+        <div className="flex items-center gap-2">
+          <img 
+            src="/icon.png" 
+            alt="Research Portal" 
+            className="w-6 h-6 rounded"
+          />
+          <h1 className="text-lg font-semibold text-notion-text-primary">
+            Research
+          </h1>
+        </div>
       </div>
 
       {/* Search */}

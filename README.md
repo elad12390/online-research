@@ -2,6 +2,12 @@
 
 AI-powered research assistant with web search, multi-provider LLM support, and a beautiful web interface.
 
+![Research Portal Main](website/public/assets/screenshot-main.png)
+*Main portal interface with project browser and research hub*
+
+![Research Wizard](website/public/assets/screenshot-wizard.png)
+*AI-powered research wizard for configuring autonomous research tasks*
+
 ## Features
 
 - **AI Research Wizard** - Automated research using Claude, GPT, or Gemini

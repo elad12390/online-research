@@ -5,6 +5,8 @@ description: Automated research that actually works. No babysitting required.
 
 Research Portal is a self-hosted tool that turns research tasks into structured reports. You give it a topic, it searches the web, reads sources, and writes up findings. You come back to organized documentation instead of 50 open tabs.
 
+![Research Portal Interface](../../../assets/screenshot-main.png)
+
 ## The Problem It Solves
 
 Research sucks. Not the learning part — the grunt work part.

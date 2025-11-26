@@ -9,6 +9,11 @@ export function WelcomeScreen() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-notion-bg-primary to-notion-bg-secondary">
       <div className="text-center max-w-md">
+        <img 
+          src="/logo.png" 
+          alt="Research Portal" 
+          className="w-24 h-24 mx-auto mb-6 rounded-xl shadow-lg"
+        />
         <h1 className="text-4xl font-bold text-notion-text-primary mb-4">
           Research Portal
         </h1>

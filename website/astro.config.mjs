@@ -11,8 +11,10 @@ export default defineConfig({
 			title: 'Research Portal',
 			description: 'AI-powered research assistant with web search, multi-provider LLM support, and a beautiful web interface.',
 			logo: {
-				src: './src/assets/logo.svg',
+				src: './src/assets/logo.png',
+				alt: 'Research Portal',
 			},
+			favicon: '/favicon-32.png',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/elad12390/online-research' },
 			],
@@ -59,7 +61,14 @@ export default defineConfig({
 					tag: 'meta',
 					attrs: {
 						property: 'og:image',
-						content: 'https://elad12390.github.io/online-research/og-image.png',
+						content: 'https://elad12390.github.io/online-research/assets/screenshot-main.png',
+					},
+				},
+				{
+					tag: 'link',
+					attrs: {
+						rel: 'apple-touch-icon',
+						href: '/online-research/apple-touch-icon.png',
 					},
 				},
 			],
