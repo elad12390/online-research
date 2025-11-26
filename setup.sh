@@ -13,6 +13,7 @@
 #   --anthropic-key KEY    Set Anthropic API key
 #   --openai-key KEY       Set OpenAI API key  
 #   --google-key KEY       Set Google API key
+#   --pixabay-key KEY      Set Pixabay API key (for image search)
 #   --port PORT            Portal port (default: 3847)
 #   --searxng-port PORT    SearXNG port (default: 8847)
 #   --research-dir DIR     Research directory (default: ~/Documents/research)
@@ -79,6 +80,7 @@ USE_TOR=false
 ANTHROPIC_API_KEY=""
 OPENAI_API_KEY=""
 GOOGLE_API_KEY=""
+PIXABAY_API_KEY=""
 
 # CLI mode flags
 AUTO_MODE=false
@@ -98,6 +100,10 @@ parse_args() {
                 ;;
             --google-key)
                 GOOGLE_API_KEY="$2"
+                shift 2
+                ;;
+            --pixabay-key)
+                PIXABAY_API_KEY="$2"
                 shift 2
                 ;;
             --port)
@@ -189,6 +195,7 @@ Options:
   --anthropic-key KEY    Set Anthropic API key (Claude)
   --openai-key KEY       Set OpenAI API key (GPT)
   --google-key KEY       Set Google API key (Gemini)
+  --pixabay-key KEY      Set Pixabay API key (image search)
   --port PORT            Portal port (default: 3847)
   --searxng-port PORT    SearXNG port (default: 8847)
   --research-dir DIR     Research directory (default: ~/Documents/research)
@@ -527,6 +534,12 @@ configure() {
     echo -e "  ${WHITE}Google AI (Gemini)${NC} - ${CYAN}https://makersuite.google.com/app/apikey${NC}"
     GOOGLE_API_KEY=$(ask_secret "GOOGLE_API_KEY")
     if [ -n "$GOOGLE_API_KEY" ]; then echo -e "  ${CHECK} Configured"; fi
+    
+    echo ""
+    echo -e "  ${WHITE}Pixabay (Image Search)${NC} - ${CYAN}https://pixabay.com/api/docs/${NC}"
+    echo -e "  ${GRAY}Optional: Enables image search in research${NC}"
+    PIXABAY_API_KEY=$(ask_secret "PIXABAY_API_KEY")
+    if [ -n "$PIXABAY_API_KEY" ]; then echo -e "  ${CHECK} Configured"; fi
 }
 
 generate_env() {
@@ -547,6 +560,7 @@ RESEARCH_DIR=$RESEARCH_DIR
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
 OPENAI_API_KEY=$OPENAI_API_KEY
 GOOGLE_API_KEY=$GOOGLE_API_KEY
+PIXABAY_API_KEY=$PIXABAY_API_KEY
 
 # Search Engines
 SEARCH_GOOGLE=$SEARCH_GOOGLE
@@ -805,6 +819,18 @@ deploy() {
         fi
     fi
     
+    # Web Research Assistant (if search/full profile enabled)
+    if [ -n "$PROFILE" ]; then
+        echo -ne "  ${YELLOW}◐${NC} Web Research: ${GRAY}waiting${NC}    " >&2
+        # Give web-research more time to start (needs Playwright/crawl4ai)
+        if wait_for_healthy "research-web-assistant" "Web Research" 120; then
+            : # success
+        else
+            # Web research may report unhealthy due to SSE endpoint check timing
+            echo -e "  ${YELLOW}!${NC} Web Research: ${YELLOW}may still be starting${NC} ${DIM}(check logs if issues)${NC}"
+        fi
+    fi
+    
     echo ""
     
     # Verify HTTP endpoints
@@ -893,6 +919,7 @@ main() {
         [ -n "$ANTHROPIC_API_KEY" ] && echo -e "    Anthropic:      ${GREEN}configured${NC}"
         [ -n "$OPENAI_API_KEY" ] && echo -e "    OpenAI:         ${GREEN}configured${NC}"
         [ -n "$GOOGLE_API_KEY" ] && echo -e "    Google:         ${GREEN}configured${NC}"
+        [ -n "$PIXABAY_API_KEY" ] && echo -e "    Pixabay:        ${GREEN}configured${NC}"
         echo ""
     else
         configure
