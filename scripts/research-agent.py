@@ -379,6 +379,9 @@ async def message_loop(llm, project_dir: str, request_params):
     """
     messages_file = Path(project_dir) / ".messages.json"
     last_message_id = None
+    project_path = Path(project_dir)
+    consecutive_errors = 0
+    max_consecutive_errors = 5  # Exit after 5 consecutive errors
 
     print(
         json.dumps(
@@ -394,8 +397,23 @@ async def message_loop(llm, project_dir: str, request_params):
 
     while True:
         try:
+            # Check if project directory still exists - exit if deleted
+            if not project_path.exists():
+                print(
+                    json.dumps(
+                        {
+                            "type": "log",
+                            "message": "Project directory no longer exists. Exiting message loop.",
+                        }
+                    )
+                    + "\n",
+                    flush=True,
+                    end="",
+                )
+                return
+
             # Check for kill signal
-            kill_file = Path(project_dir) / ".kill"
+            kill_file = project_path / ".kill"
             if kill_file.exists():
                 print(
                     json.dumps(
@@ -549,19 +567,39 @@ async def message_loop(llm, project_dir: str, request_params):
 
             # Sleep briefly before checking again
             await asyncio.sleep(2)
+            # Reset error counter on successful iteration
+            consecutive_errors = 0
 
         except Exception as e:
+            consecutive_errors += 1
             print(
                 json.dumps(
                     {
                         "type": "message_loop_error",
                         "error": str(e),
+                        "consecutive_errors": consecutive_errors,
                     }
                 )
                 + "\n",
                 flush=True,
                 end="",
             )
+
+            # Exit if too many consecutive errors (likely unrecoverable)
+            if consecutive_errors >= max_consecutive_errors:
+                print(
+                    json.dumps(
+                        {
+                            "type": "log",
+                            "message": f"Exiting after {consecutive_errors} consecutive errors",
+                        }
+                    )
+                    + "\n",
+                    flush=True,
+                    end="",
+                )
+                return
+
             await asyncio.sleep(5)
 
 

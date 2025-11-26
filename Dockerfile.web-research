@@ -1,0 +1,41 @@
+# Web Research Assistant - Separate container with native Playwright support
+#
+# This runs web-research-assistant MCP server with SSE transport
+# Uses native ARM64 Playwright for Apple Silicon compatibility
+
+FROM mcr.microsoft.com/playwright:v1.52.0-noble
+
+WORKDIR /app
+
+# Install Python venv (Python 3.12 is already in Ubuntu Noble)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-venv \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python3 -m venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install web-research-assistant
+RUN pip install --no-cache-dir web-research-assistant
+
+# Install playwright browsers (chromium is included in base image)
+RUN playwright install chromium || true
+
+# Copy the SSE wrapper script
+COPY --chmod=755 scripts/web-research-sse.py /app/web-research-sse.py
+
+# Use existing pwuser from Playwright image (or create if not exists)
+RUN chown -R pwuser:pwuser /app 2>/dev/null || (useradd --system researcher && chown -R researcher:researcher /app)
+
+USER pwuser
+
+# Expose SSE port (FastMCP default is 8000)
+EXPOSE 8000
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Start web-research-assistant with SSE transport
+CMD ["python", "/app/web-research-sse.py"]

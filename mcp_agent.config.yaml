@@ -5,14 +5,13 @@ execution_engine: asyncio
 
 mcp:
   servers:
+    # Web Research Assistant - connects via SSE to separate container
+    # This container runs with native Playwright for ARM64 compatibility
     web-research-assistant:
-      command: "uvx"
-      args: ["web-research-assistant"]
-      env:
-        # For Docker: use internal network URL
-        # For local dev: override with http://localhost:8847/search
-        SEARXNG_BASE_URL: "http://searxng:8080/search"
+      transport: "sse"
+      url: "http://web-research:8000/sse"
     
+    # Filesystem server - runs locally in portal container
     filesystem:
       command: "uv"
       args: ["run", "python", "mcp-servers/filesystem-server.py"]

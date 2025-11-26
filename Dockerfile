@@ -2,6 +2,8 @@
 # 
 # Build: docker build -t research-portal .
 # Run:   docker run -p 3000:3000 -v ~/research:/research research-portal
+#
+# Note: Web research (Playwright/crawl4ai) runs in separate container (web-research)
 
 # ----------------------------------------------------------------------------
 # Stage 1: Node Dependencies (native architecture)
@@ -33,24 +35,25 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ----------------------------------------------------------------------------
-# Stage 3: Python Dependencies Builder (x86 for crawl4ai/playwright)
-# Uses pre-built Python image to avoid apt-get segfaults under QEMU
+# Stage 3: Python Dependencies Builder (native architecture)
+# No Playwright needed - web-research runs in separate container
 # ----------------------------------------------------------------------------
-FROM --platform=linux/amd64 python:3.11-slim-bookworm AS python-builder
+FROM python:3.11-slim-bookworm AS python-builder
 
 WORKDIR /app
 
-# Install Python dependencies into a virtual environment
-COPY requirements.txt ./
+# Create minimal requirements without crawl4ai/playwright
+RUN echo "mcp-agent>=0.1.0\nanthropic>=0.18.0\nopenai>=1.12.0\nhttpx>=0.27.0\npydantic>=2.0.0" > /tmp/requirements-minimal.txt
+
 RUN python -m venv /app/.venv && \
     /app/.venv/bin/pip install --no-cache-dir --upgrade pip && \
-    /app/.venv/bin/pip install --no-cache-dir -r requirements.txt && \
+    /app/.venv/bin/pip install --no-cache-dir -r /tmp/requirements-minimal.txt && \
     /app/.venv/bin/pip install --no-cache-dir uv
 
 # ----------------------------------------------------------------------------
-# Stage 4: Production Runner (x86 for crawl4ai/playwright compatibility)
+# Stage 4: Production Runner (native architecture)
 # ----------------------------------------------------------------------------
-FROM --platform=linux/amd64 python:3.11-slim-bookworm AS runner
+FROM python:3.11-slim-bookworm AS runner
 
 # Install Node.js 20 and build tools for native modules
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -85,7 +88,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
-# Rebuild better-sqlite3 for x86 architecture
+# Rebuild better-sqlite3 for native architecture
 RUN npm rebuild better-sqlite3 && \
     chown -R nextjs:nodejs /app/node_modules
 
