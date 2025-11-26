@@ -101,7 +101,7 @@ export function Sidebar({ onProjectSelect, onFileSelect }: SidebarProps) {
       <div className="px-4 py-4 border-b border-notion-border flex-shrink-0">
         <div className="flex items-center gap-2">
           <img 
-            src="/icon.png" 
+            src="/logo.png" 
             alt="Research Portal" 
             className="w-6 h-6 rounded"
           />
