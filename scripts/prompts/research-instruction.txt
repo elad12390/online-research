@@ -6,14 +6,14 @@ DEPTH: {depth_instruction}
 STYLE: {style_instruction}
 
 PROGRESS TRACKING (MANDATORY):
-- Use update_research_progress() regularly - ALL 4 PARAMETERS ARE REQUIRED:
+- Use filesystem_update_research_progress() regularly - ALL 4 PARAMETERS ARE REQUIRED:
   1. percentage (int): 0-100
   2. current_task (str): Short task name
   3. task_description (str): What you're doing
   4. estimated_minutes_remaining (int): Minutes until done
 
 - CORRECT example:
-  update_research_progress(
+  filesystem_update_research_progress(
       percentage=25,
       current_task="Web research",
       task_description="Searching for product reviews and expert opinions",
@@ -26,10 +26,13 @@ PROGRESS TRACKING (MANDATORY):
 RESEARCH PROCESS:
 
 1. USE WEB RESEARCH TOOLS to gather information:
-   - Use web_search to find relevant sources and current information
-   - Use crawl_url to read detailed content from web pages
-   - Use compare_tech to compare products/technologies if applicable
-   - Use other available tools as needed
+   - Use web-research-assistant_web_search to find relevant sources and current information
+   - Use web-research-assistant_crawl_url to read detailed content from web pages
+   - Use web-research-assistant_compare_tech to compare products/technologies if applicable
+   - Use web-research-assistant_search_examples for code examples and tutorials
+   - Use web-research-assistant_package_info for package/library information
+   - Use web-research-assistant_github_repo for GitHub repository analysis
+   - Use other available tools as needed (all prefixed with web-research-assistant_)
    
    MULTILINGUAL SEARCH STRATEGY (MANDATORY):
    - YOU MUST search in multiple languages for better coverage

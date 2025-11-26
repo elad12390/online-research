@@ -1,7 +1,7 @@
 TASK: Research "{topic}" and create the output files in this directory.
 
 Requirements:
-1. IMMEDIATELY call write_research_metadata() tool with:
+1. IMMEDIATELY call filesystem_write_research_metadata() tool with:
    - title: Human-readable project title (REQUIRED - shown in portal sidebar)
    - description: Brief description of research scope
    - category: Research category (e.g., "Product Research", "Market Analysis")
@@ -70,7 +70,7 @@ Requirements:
 
 4. Do not create other `.md` files besides README.md (HTML only for content)
 
-5. Use update_research_progress() to report progress as you work
+5. Use filesystem_update_research_progress() to report progress as you work
 
 ═══════════════════════════════════════════════════════════════════════════
 ⚠️  HTML STYLING - CRITICAL INSTRUCTIONS
@@ -180,7 +180,7 @@ BAD EXAMPLE (has colors - will break):
 ═══════════════════════════════════════════════════════════════════════════
 
 METADATA TOOL EXAMPLE:
-write_research_metadata(
+filesystem_write_research_metadata(
     title="Best Indoor Grills for Apartments 2024",
     description="Comprehensive research on low-odor indoor grills",
     category="Product Research",
@@ -248,7 +248,7 @@ site:who.int "guidelines" filetype:pdf
 "systematic review" topic -blog
 site:gov "policy" 2023..2024
 
-Call update_research_progress() after this round (e.g., 30%)
+Call filesystem_update_research_progress() after this round (e.g., 30%)
 
 ═══════════════════════════════════════════════════════════════════════════
 PHASE 3: EVALUATE SOURCES (CRAAP + SIFT Frameworks)
@@ -397,7 +397,7 @@ You MUST complete at least:
 - Gap analysis after each round
 - Document each iteration in your notes
 
-Call update_research_progress() between rounds showing what you're doing.
+Call filesystem_update_research_progress() between rounds showing what you're doing.
 
 ═══════════════════════════════════════════════════════════════════════════
 PHASE 7: SYNTHESIS (Only after gap analysis passes)

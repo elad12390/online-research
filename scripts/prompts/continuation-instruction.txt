@@ -4,7 +4,7 @@ CURRENT TIME: {current_time}
 FOLLOW-UP REQUEST: {user_message}
 
 CRITICAL INSTRUCTIONS:
-1. **DO NOT** call write_research_metadata() unless the user explicitly asks to RENAME the project.
+1. **DO NOT** call filesystem_write_research_metadata() unless the user explicitly asks to RENAME the project.
    - Maintain the existing project title and category.
    - "Mark as done" or "Finish" requests are status updates, NOT new research topics.
 
@@ -14,9 +14,9 @@ CRITICAL INSTRUCTIONS:
    - Prefer updating existing HTML files or creating new specific ones (e.g., `comparison-v2.html`).
 
 3. **Tools**:
-   - Use web_search for new information.
-   - Use write_file to save your response or updates.
-   - Use update_research_progress to show what you are doing.
+   - Use web-research-assistant_web_search for new information.
+   - Use filesystem_write_file to save your response or updates.
+   - Use filesystem_update_research_progress to show what you are doing.
 
 4. **Response**:
    - Provide a direct, helpful answer to the follow-up.
