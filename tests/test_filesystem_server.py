@@ -679,8 +679,10 @@ class TestPathValidation:
     def test_allows_path_in_allowed_dir(self):
         """Should allow paths within allowed directories."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            allowed = [Path(tmpdir)]
-            test_path = Path(tmpdir) / "file.txt"
+            allowed = [Path(tmpdir).resolve()]
+            test_path = Path(tmpdir).resolve() / "file.txt"
+            # Create the file so resolve() works correctly
+            test_path.touch()
 
             is_allowed, resolved = is_path_allowed(test_path, allowed)
 
@@ -689,7 +691,7 @@ class TestPathValidation:
     def test_rejects_path_outside_allowed_dir(self):
         """Should reject paths outside allowed directories."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            allowed = [Path(tmpdir)]
+            allowed = [Path(tmpdir).resolve()]
             test_path = Path("/etc/passwd")
 
             is_allowed, resolved = is_path_allowed(test_path, allowed)
@@ -699,18 +701,20 @@ class TestPathValidation:
     def test_resolves_relative_paths(self):
         """Should resolve relative paths against first allowed directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            allowed = [Path(tmpdir)]
+            allowed = [Path(tmpdir).resolve()]
+            # Create the file so it can be resolved
+            (Path(tmpdir) / "file.txt").touch()
             test_path = Path("file.txt")  # Relative
 
             is_allowed, resolved = is_path_allowed(test_path, allowed)
 
             assert is_allowed is True
-            assert str(resolved) == str(Path(tmpdir) / "file.txt")
+            assert str(resolved) == str(Path(tmpdir).resolve() / "file.txt")
 
     def test_handles_parent_traversal(self):
         """Should handle and reject parent directory traversal attempts."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            allowed = [Path(tmpdir)]
+            allowed = [Path(tmpdir).resolve()]
             # Try to escape using ../
             test_path = Path(tmpdir) / ".." / ".." / "etc" / "passwd"
 
@@ -721,10 +725,12 @@ class TestPathValidation:
     def test_allows_subdirectories(self):
         """Should allow paths in subdirectories of allowed dirs."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            allowed = [Path(tmpdir)]
-            subdir = Path(tmpdir) / "sub" / "dir"
+            allowed = [Path(tmpdir).resolve()]
+            subdir = Path(tmpdir).resolve() / "sub" / "dir"
             subdir.mkdir(parents=True)
             test_path = subdir / "file.txt"
+            # Create the file so it can be resolved
+            test_path.touch()
 
             is_allowed, resolved = is_path_allowed(test_path, allowed)
 
@@ -742,10 +748,13 @@ class TestPathValidation:
         """Should allow paths in any of multiple allowed directories."""
         with tempfile.TemporaryDirectory() as tmpdir1:
             with tempfile.TemporaryDirectory() as tmpdir2:
-                allowed = [Path(tmpdir1), Path(tmpdir2)]
+                allowed = [Path(tmpdir1).resolve(), Path(tmpdir2).resolve()]
 
-                path1 = Path(tmpdir1) / "file.txt"
-                path2 = Path(tmpdir2) / "file.txt"
+                path1 = Path(tmpdir1).resolve() / "file.txt"
+                path2 = Path(tmpdir2).resolve() / "file.txt"
+                # Create files so they can be resolved
+                path1.touch()
+                path2.touch()
 
                 assert is_path_allowed(path1, allowed)[0] is True
                 assert is_path_allowed(path2, allowed)[0] is True
@@ -792,8 +801,8 @@ class TestMetadataWriting:
                 "category": "Cat",
                 "tags": [],
                 "summary": "Sum",
-                "createdAt": datetime.utcnow().isoformat() + "Z",
-                "updatedAt": datetime.utcnow().isoformat() + "Z",
+                "createdAt": datetime.now(tz=None).isoformat() + "Z",
+                "updatedAt": datetime.now(tz=None).isoformat() + "Z",
             }
 
             metadata_file.write_text(json.dumps(metadata, indent=2))
@@ -861,8 +870,8 @@ class TestProgressFile:
                 "currentTask": "Testing",
                 "currentTaskDescription": "Running tests",
                 "completedTasks": [],
-                "startedAt": datetime.utcnow().isoformat() + "Z",
-                "updatedAt": datetime.utcnow().isoformat() + "Z",
+                "startedAt": datetime.now(tz=None).isoformat() + "Z",
+                "updatedAt": datetime.now(tz=None).isoformat() + "Z",
             }
 
             progress_file.write_text(json.dumps(progress, indent=2))
@@ -931,7 +940,7 @@ class TestProgressFile:
             project_dir = Path(tmpdir)
             progress_file = project_dir / ".research-progress.json"
 
-            now = datetime.utcnow()
+            now = datetime.now(tz=None)
             progress = {
                 "percentage": 50,
                 "startedAt": now.isoformat() + "Z",
@@ -948,7 +957,7 @@ class TestProgressFile:
         """Should calculate estimated completion time."""
         from datetime import timedelta
 
-        now = datetime.utcnow()
+        now = datetime.now(tz=None)
         estimated_minutes = 30
 
         estimated_completion = (
