@@ -82,6 +82,18 @@ PROGRESS TRACKING (MANDATORY):
 - Update progress at least every few minutes so the user can track your work
 - Use estimated_minutes_remaining=0 only when percentage=100 (complete)
 
+⚠️ MISSING FILES HANDLING (CRITICAL):
+When you create HTML files with links to other HTML files, you MUST create ALL linked files.
+The system will BLOCK you from marking research complete if any linked files are missing.
+
+If you see "BLOCKED: Missing files" in the progress response:
+1. READ THE ERROR MESSAGE - it lists exactly which files are missing
+2. CREATE EACH MISSING FILE using filesystem_write_file()
+3. Then try update_research_progress(100, ...) again
+
+IMPORTANT: If your index.html links to "detailed-analysis.html", that file MUST exist!
+DO NOT stop after writing index.html - continue creating all referenced files.
+
 RESEARCH PROCESS:
 
 1. USE WEB RESEARCH TOOLS to gather information:
@@ -230,6 +242,17 @@ OUTPUT REQUIREMENTS
    
    YOU HAVE COMPLETE FREEDOM to create as many files and layers as needed
    for PROPER, thorough research. More files = better organization = easier navigation.
+
+   🚨 CRITICAL: CREATE ALL FILES YOU LINK TO!
+   If index.html has <a href="detailed-analysis.html">, you MUST create detailed-analysis.html!
+   The system will BLOCK completion if any linked HTML files don't exist.
+   
+   WORKFLOW:
+   1. Write index.html (or main file) with all your links
+   2. IMMEDIATELY write each linked file (detailed-analysis.html, sources.html, etc.)
+   3. Only call update_research_progress(100, ...) after ALL files exist
+   
+   DO NOT STOP after writing index.html - you're not done until all linked files exist!
 
 4. Do not create other `.md` files besides README.md (HTML only for content)
 
