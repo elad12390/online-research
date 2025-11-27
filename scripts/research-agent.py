@@ -304,18 +304,86 @@ class ToolCallHandler(logging.Handler):
             self.handleError(record)
 
 
-# ... (update_progress and load_conversation_history remain same) ...
+def _extract_local_links_from_html(html_content: str) -> set:
+    """Extract local file links from HTML content (href and src attributes)."""
+    import re
+
+    links = set()
+    pattern = r'(?:href|src)=["\']([^"\']+)["\']'
+    matches = re.findall(pattern, html_content, re.IGNORECASE)
+    for link in matches:
+        if link.startswith(
+            ("http://", "https://", "mailto:", "#", "data:", "javascript:")
+        ):
+            continue
+        if not link.strip():
+            continue
+        link = link.split("?")[0].split("#")[0]
+        if link:
+            links.add(link)
+    return links
+
+
+def _check_missing_files_in_project(project_dir: Path) -> dict:
+    """Scan all HTML files in project directory and check for broken local links."""
+    missing_files = {}
+    html_files = list(project_dir.glob("*.html")) + list(project_dir.glob("**/*.html"))
+    for html_file in html_files:
+        try:
+            content = html_file.read_text(encoding="utf-8")
+            local_links = _extract_local_links_from_html(content)
+            missing_for_file = []
+            for link in local_links:
+                if link.startswith("/"):
+                    linked_path = project_dir / link.lstrip("/")
+                else:
+                    linked_path = html_file.parent / link
+                if not linked_path.exists():
+                    missing_for_file.append(link)
+            if missing_for_file:
+                rel_html_path = html_file.relative_to(project_dir)
+                missing_files[str(rel_html_path)] = missing_for_file
+        except Exception:
+            pass
+    return missing_files
 
 
 async def update_progress(
     project_dir: str, percentage: int, current_task: str, completed_tasks: list[str]
 ):
-    """Update progress file for Research Portal"""
-    progress_file = Path(project_dir) / ".research-progress.json"
+    """Update progress file for Research Portal.
+
+    If percentage >= 90 and there are missing files referenced in HTML,
+    progress is capped at 85% and a warning is logged.
+    """
+    project_path = Path(project_dir)
+    progress_file = project_path / ".research-progress.json"
+
+    # Check for missing files if trying to complete
+    actual_percentage = percentage
+    actual_task = current_task
+    task_description = f"Currently working on: {current_task}"
+
+    if percentage >= 90:
+        missing_files = _check_missing_files_in_project(project_path)
+        if missing_files:
+            total_missing = sum(len(links) for links in missing_files.values())
+            actual_percentage = 85  # Cap at 85%
+            actual_task = "BLOCKED: Missing files"
+            task_description = (
+                f"Cannot complete - {total_missing} referenced files not created"
+            )
+
+            # Log the warning
+            warning_msg = f"BLOCKED from marking complete! Missing files:\n"
+            for html_file, links in missing_files.items():
+                warning_msg += f"  {html_file}: {', '.join(links)}\n"
+            sys.stderr.write(warning_msg)
+
     progress = {
-        "percentage": percentage,
-        "currentTask": current_task,
-        "currentTaskDescription": f"Currently working on: {current_task}",
+        "percentage": actual_percentage,
+        "currentTask": actual_task,
+        "currentTaskDescription": task_description,
         "completedTasks": completed_tasks,
         "startedAt": datetime.utcnow().isoformat() + "Z",
         "estimatedCompletion": datetime.utcnow().isoformat() + "Z",

@@ -96,6 +96,7 @@ RUN npm rebuild better-sqlite3 && \
 COPY --chown=nextjs:nodejs mcp-servers ./mcp-servers
 COPY --chown=nextjs:nodejs scripts ./scripts
 COPY --chown=nextjs:nodejs mcp_agent.config.yaml ./mcp_agent.config.yaml
+COPY --chown=nextjs:nodejs tests ./tests
 
 # Copy pre-built Python virtual environment from python-builder
 COPY --from=python-builder --chown=nextjs:nodejs /app/.venv /app/.venv
