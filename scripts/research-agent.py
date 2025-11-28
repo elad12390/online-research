@@ -606,19 +606,77 @@ async def message_loop(llm, project_dir: str, request_params):
                             end="",
                         )
 
-                        # Also emit the assistant response as an activity
-                        print(
-                            json.dumps(
-                                {
-                                    "type": "assistant_response",
-                                    "message_id": last_message_id,
-                                    "response": response,
-                                }
-                            )
-                            + "\n",
-                            flush=True,
-                            end="",
+                        # Parse tool calls from response and emit them individually
+                        # The response contains "[Calling tool xxx with args {...}]" patterns
+                        import re
+
+                        # Extract and emit each tool call as a separate activity
+                        tool_call_pattern = (
+                            r"\[Calling tool ([a-zA-Z0-9_.-]+) with args (\{[^}]+\})\]"
                         )
+                        tool_calls = re.findall(tool_call_pattern, response)
+
+                        for tool_name, tool_args_str in tool_calls:
+                            try:
+                                tool_args = json.loads(tool_args_str)
+                            except json.JSONDecodeError:
+                                tool_args = tool_args_str
+
+                            # Emit tool call activity
+                            print(
+                                json.dumps(
+                                    {
+                                        "type": "tool_call",
+                                        "tool": tool_name,
+                                        "args": tool_args,
+                                        "timestamp": datetime.utcnow().isoformat(),
+                                    }
+                                )
+                                + "\n",
+                                flush=True,
+                                end="",
+                            )
+
+                            # Also emit a tool result placeholder
+                            print(
+                                json.dumps(
+                                    {
+                                        "type": "tool_result",
+                                        "tool": tool_name,
+                                        "result": f"{tool_name} completed",
+                                        "timestamp": datetime.utcnow().isoformat(),
+                                    }
+                                )
+                                + "\n",
+                                flush=True,
+                                end="",
+                            )
+
+                        # Extract just the final text response (not tool call logs)
+                        # Remove tool call patterns like "[Calling tool xxx with args {...}]"
+                        clean_response = re.sub(
+                            r"\[Calling tool [^\]]+\]", "", response
+                        ).strip()
+
+                        # Clean up extra whitespace from removed tool calls
+                        clean_response = re.sub(
+                            r"\n\s*\n", "\n\n", clean_response
+                        ).strip()
+
+                        # Only emit if there's actual content after removing tool calls
+                        if clean_response:
+                            print(
+                                json.dumps(
+                                    {
+                                        "type": "assistant_response",
+                                        "message_id": last_message_id,
+                                        "response": clean_response,
+                                    }
+                                )
+                                + "\n",
+                                flush=True,
+                                end="",
+                            )
 
                         # Mark research as completed (for UI status)
                         print(
