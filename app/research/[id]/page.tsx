@@ -56,6 +56,37 @@ export default function ResearchDetailPage({ params }: { params: { id: string } 
   const [sending, setSending] = useState(false)
   const [stopping, setStopping] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [isNearBottom, setIsNearBottom] = useState(true)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [lastSeenActivityCount, setLastSeenActivityCount] = useState(0)
+
+  // Check if user is near bottom of scroll
+  const checkIfNearBottom = () => {
+    const container = scrollContainerRef.current
+    if (!container) return true
+    const threshold = 150 // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+  }
+
+  // Handle scroll events
+  const handleScroll = () => {
+    const nearBottom = checkIfNearBottom()
+    setIsNearBottom(nearBottom)
+    if (nearBottom) {
+      setUnreadCount(0)
+      const allActivities = data?.agents?.flatMap(agent => agent.activities || []) || []
+      setLastSeenActivityCount(allActivities.length)
+    }
+  }
+
+  // Scroll to bottom
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setUnreadCount(0)
+    const allActivities = data?.agents?.flatMap(agent => agent.activities || []) || []
+    setLastSeenActivityCount(allActivities.length)
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,9 +108,34 @@ export default function ResearchDetailPage({ params }: { params: { id: string } 
     return () => clearInterval(interval)
   }, [params.id])
 
+  // Track new messages and auto-scroll only if near bottom
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [data?.agents])
+    const allActivities = data?.agents?.flatMap(agent => agent.activities || []) || []
+    const currentCount = allActivities.length
+    
+    if (currentCount > lastSeenActivityCount) {
+      if (isNearBottom) {
+        // User is at bottom, auto-scroll and update seen count
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        setLastSeenActivityCount(currentCount)
+      } else {
+        // User is scrolled up, show unread count
+        setUnreadCount(currentCount - lastSeenActivityCount)
+      }
+    }
+  }, [data?.agents, isNearBottom, lastSeenActivityCount])
+
+  // Initialize lastSeenActivityCount on first load
+  useEffect(() => {
+    if (data && lastSeenActivityCount === 0) {
+      const allActivities = data.agents?.flatMap(agent => agent.activities || []) || []
+      setLastSeenActivityCount(allActivities.length)
+      // Scroll to bottom on initial load
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      }, 100)
+    }
+  }, [data, lastSeenActivityCount])
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { 
@@ -295,7 +351,11 @@ export default function ResearchDetailPage({ params }: { params: { id: string } 
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto">
+      <div 
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto relative"
+      >
         <div className="max-w-3xl mx-auto">
           {/* User Initial Message */}
           <div className="group px-4 py-8 hover:bg-[#2a2a2a] transition-colors">
@@ -607,6 +667,23 @@ export default function ResearchDetailPage({ params }: { params: { id: string } 
 
           <div ref={chatEndRef} />
         </div>
+
+        {/* Jump to Bottom Button */}
+        {!isNearBottom && (
+          <button
+            onClick={scrollToBottom}
+            className="fixed bottom-24 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition-all duration-200 flex items-center gap-2 z-50"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Input Area */}
