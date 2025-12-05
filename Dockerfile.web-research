@@ -17,8 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python3 -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install web-research-assistant
-RUN pip install --no-cache-dir web-research-assistant
+# Install web-research-assistant (ensure we get latest MCP for server features)
+RUN pip install --no-cache-dir "mcp>=1.23.0" web-research-assistant
 
 # Install playwright browsers (chromium is included in base image)
 RUN playwright install chromium || true

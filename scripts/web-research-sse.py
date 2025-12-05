@@ -33,11 +33,48 @@ def main():
     mcp.settings.host = host
     mcp.settings.port = port
 
+    # Allow connections from Docker network hostnames
+    # MCP 1.23+ has stricter host header validation
+    if hasattr(mcp.settings, "transport_security") and mcp.settings.transport_security:
+        # Add Docker service names and any hostname to allowed hosts
+        mcp.settings.transport_security.allowed_hosts.extend(
+            [
+                "web-research:*",
+                "research-web-assistant:*",
+                "0.0.0.0:*",
+                "*:8000",  # Allow any host on port 8000
+            ]
+        )
+        mcp.settings.transport_security.allowed_origins.extend(
+            [
+                "http://web-research:*",
+                "http://research-web-assistant:*",
+                "http://0.0.0.0:*",
+            ]
+        )
+        logger.info(f"Allowed hosts: {mcp.settings.transport_security.allowed_hosts}")
+
+    # Try to use uvicorn directly to avoid FastMCP's run constraints if needed
+    # and to ensure we can control execution
+    import uvicorn
+
     logger.info("Starting web-research-assistant MCP server with SSE transport")
     logger.info(f"SSE endpoint: http://{host}:{port}/sse")
 
-    # Run with SSE transport
-    mcp.run(transport="sse")
+    # FastMCP.sse_app() returns the Starlette app for SSE transport
+    try:
+        app = mcp.sse_app()
+        # Run uvicorn directly
+        # forwarded_allow_ips='*' is important behind Docker/Proxies
+        # proxy_headers=True is also important
+        uvicorn.run(
+            app, host=host, port=port, forwarded_allow_ips="*", proxy_headers=True
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to run uvicorn directly: {e}")
+        logger.info("Falling back to mcp.run()")
+        mcp.run(transport="sse")
 
 
 if __name__ == "__main__":

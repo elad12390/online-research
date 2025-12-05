@@ -43,7 +43,8 @@ FROM python:3.11-slim-bookworm AS python-builder
 WORKDIR /app
 
 # Create minimal requirements without crawl4ai/playwright
-RUN echo "mcp-agent>=0.1.0\nanthropic>=0.18.0\nopenai>=1.12.0\nhttpx>=0.27.0\npydantic>=2.0.0" > /tmp/requirements-minimal.txt
+# Pin mcp==1.21.0 to avoid mcp-agent crash with UnionType in 1.23.0+
+RUN echo "mcp-agent>=0.1.0\nmcp==1.21.0\nanthropic>=0.18.0\nopenai>=1.12.0\nhttpx>=0.27.0\npydantic>=2.0.0" > /tmp/requirements-minimal.txt
 
 RUN python -m venv /app/.venv && \
     /app/.venv/bin/pip install --no-cache-dir --upgrade pip && \

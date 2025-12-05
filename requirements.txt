@@ -1,5 +1,6 @@
 # Research Agent Dependencies
 mcp-agent>=0.1.0
+mcp==1.21.0  # Pin to 1.21.0 to avoid mcp-agent crash with UnionType in 1.23.0+
 anthropic>=0.18.0
 openai>=1.12.0
 httpx>=0.27.0

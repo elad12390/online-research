@@ -229,7 +229,12 @@ export class ResearchManager {
 
       // Determine provider and model (default to anthropic since it's more commonly configured)
       const provider = config.provider || "anthropic"
-      const model = config.model || (provider === "anthropic" ? "claude-sonnet-4-5" : "gpt-4o-mini")
+      // Handle "auto" model - replace with actual default model for the provider
+      // "auto" is not a valid model name for any LLM provider
+      let model = config.model
+      if (!model || model === "auto") {
+        model = provider === "anthropic" ? "claude-sonnet-4-5" : "gpt-4o-mini"
+      }
       
       // Check for appropriate API key based on provider
       if (provider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {

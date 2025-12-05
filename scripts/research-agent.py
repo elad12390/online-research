@@ -9,16 +9,13 @@ import json
 import sys
 import logging
 import re
+from typing import cast, Any
 from datetime import datetime
 from pathlib import Path
 from io import StringIO
 
 from mcp_agent.app import MCPApp
 from mcp_agent.agents.agent import Agent
-from mcp_agent.workflows.llm.augmented_llm_anthropic import AnthropicAugmentedLLM
-from mcp_agent.workflows.llm.augmented_llm_openai import OpenAIAugmentedLLM
-
-
 from mcp_agent.config import Settings, LoggerSettings
 
 
@@ -440,7 +437,7 @@ async def load_conversation_history(project_dir: str):
         return None
 
 
-async def message_loop(llm, project_dir: str, request_params):
+async def message_loop(llm, project_dir: str):
     """
     Listen for new messages and continue the conversation
     Polls for messages from the .messages.json file
@@ -494,9 +491,6 @@ async def message_loop(llm, project_dir: str, request_params):
                     flush=True,
                     end="",
                 )
-                # Optional: remove the kill file so future agents don't die immediately
-                # But maybe the manager should handle that.
-                # Let's just exit.
                 return
 
             # Check for new messages
@@ -558,7 +552,15 @@ async def message_loop(llm, project_dir: str, request_params):
                             project_dir, 30, "Researching follow-up", []
                         )
 
-                        # Process the message with the LLM using full research capabilities
+                        # Process the message with the LLM
+                        from mcp_agent.workflows.llm.augmented_llm import RequestParams
+
+                        request_params = RequestParams(
+                            max_iterations=999999,
+                            temperature=0.7,
+                            maxTokens=8192,
+                        )
+
                         response = await llm.generate_str(
                             message=continuation_prompt,
                             request_params=request_params,
@@ -740,14 +742,6 @@ async def run_research(
 ):
     """
     Run research using mcp-agent
-
-    Args:
-        topic: Research topic
-        project_dir: Directory to save research files
-        provider: LLM provider (anthropic, openai, google, etc.)
-        model: Model name
-        depth: Research depth (quick, standard, deep)
-        style: Research style (comprehensive, comparing, practical)
     """
 
     completed_tasks = []
@@ -757,7 +751,6 @@ async def run_research(
     # 2. ToolCallHandler -> stdout (JSON messages for ResearchManager)
 
     # 1. Hijack sys.stdout to ensure NOTHING uses it except us
-    # This is the nuclear option to prevent library leaks
     original_stdout = sys.stdout
     sys.stdout = sys.stderr  # Redirect all standard print() calls to stderr by default
 
@@ -781,21 +774,14 @@ async def run_research(
     logging.getLogger("mcp_agent").handlers = []
 
     # StreamHandler to stderr for all normal logs
-    # We use the original stderr explicitly
     stderr_handler = logging.StreamHandler(sys.stderr)
     stderr_handler.setFormatter(
         logging.Formatter("[%(levelname)s] %(name)s: %(message)s")
     )
     root_logger.addHandler(stderr_handler)
 
-    # ToolCallHandler needs to write to the REAL stdout via our wrapper
-    # But ToolCallHandler uses print() internally which is now redirected to stderr!
-    # We need to update ToolCallHandler to use protocol_out.write() or restore sys.stdout locally?
-    # No, better to update ToolCallHandler class to use a specific stream.
-
-    # Let's revert the sys.stdout hijack if it's too risky for ToolCallHandler
-    # and instead scrub the loggers more thoroughly.
-    sys.stdout = original_stdout  # Restore for now, I'll update handlers instead.
+    # Restore stdout
+    sys.stdout = original_stdout
 
     # Remove handlers from ALL loggers
     for name in logging.root.manager.loggerDict:
@@ -808,16 +794,21 @@ async def run_research(
     # Re-add stderr handler to root
     root_logger.addHandler(stderr_handler)
 
+    # SILENCE NOISY LOGGERS explicitly
+    noisy_loggers = [
+        "mcp_agent.workflows.llm.augmented_llm_anthropic",
+        "mcp_agent.workflows.llm.augmented_llm_openai",
+        "httpcore",
+        "httpx",
+    ]
+    for logger_name in noisy_loggers:
+        logging.getLogger(logger_name).setLevel(logging.INFO)
+
     # ToolCallHandler to stdout for structured JSON
     tool_handler = ToolCallHandler()
     tool_handler.setLevel(logging.DEBUG)
     ToolCallHandler.project_dir = project_dir
     root_logger.addHandler(tool_handler)
-
-    # Explicitly silence mcp_agent logger to verify
-    # mcp_logger = logging.getLogger("mcp_agent")
-    # mcp_logger.addHandler(stderr_handler)
-    # mcp_logger.propagate = False
 
     # Create a temporary config file with project-specific filesystem path
     import os
@@ -839,8 +830,17 @@ async def run_research(
         os.path.abspath(project_dir),  # Pass allowed directory as argument
     ]
 
+    # Update LLM config based on arguments
+    if provider == "anthropic":
+        if "anthropic" not in config:
+            config["anthropic"] = {}
+        config["anthropic"]["default_model"] = model
+    elif provider == "openai":
+        if "openai" not in config:
+            config["openai"] = {}
+        config["openai"]["default_model"] = model
+
     # DISABLE mcp-agent's default console logger (which writes to stdout)
-    # We handle logging ourselves via root logger above
     if "logger" not in config:
         config["logger"] = {}
     config["logger"]["transports"] = []
@@ -908,9 +908,6 @@ async def run_research(
         prompts_dir = Path(__file__).parent / "prompts"
         instruction_template = (prompts_dir / "research-instruction.txt").read_text()
     except Exception as e:
-        # Fallback (though user said "no fallback", crashing is worse if file missing in dev)
-        # But user explicitly said "no fallback". I will let it crash or just not handle it.
-        # Actually, to respect "no fallback", I should assume the file exists.
         raise RuntimeError(f"Failed to load prompt file: {e}")
 
     instruction = instruction_template.format(
@@ -967,256 +964,122 @@ async def run_research(
 
             system_prompt = system_prompt_file.read_text()
 
-            # Combine system prompt with task-specific instruction (contains multilingual
-            # search strategy, source bias awareness, progress tracking, etc.)
+            # Combine system prompt with task-specific instruction
             full_system_prompt = system_prompt + "\n\n" + instruction
-
-            researcher = Agent(
-                name="researcher",
-                instruction=full_system_prompt,
-                server_names=["web-research-assistant", "filesystem"],
-            )
 
             completed_tasks.append("Connected to MCP servers")
             await update_progress(
-                project_dir, 20, "Initializing research agent", completed_tasks
+                project_dir, 20, "Initializing Research Agent", completed_tasks
             )
 
-            async with researcher:
-                # List available tools
-                tools_result = await researcher.list_tools()
-                tool_count = (
-                    len(tools_result.tools) if hasattr(tools_result, "tools") else 0
+            # Change to project directory BEFORE creating agent
+            # This ensures any relative paths used by the agent are relative to project dir
+            import os
+
+            original_dir = os.getcwd()
+            os.chdir(project_dir)
+
+            try:
+                # Initialize Agent
+                # Note: We pass the full instruction here.
+                # The agent will have access to the context (servers)
+                agent = Agent(
+                    name="ResearchAgent",
+                    instruction=full_system_prompt,
+                    server_names=["web-research-assistant", "filesystem"],
+                    context=running_app.context,
                 )
 
-                # Get tool names for debugging
-                tool_names = []
-                if hasattr(tools_result, "tools"):
-                    tool_names = [tool.name for tool in tools_result.tools]
+                # Initialize the agent (connects to MCP servers)
+                await agent.initialize()
 
-                logger.info(f"Available tools: {tool_count} tools")
-                logger.info(f"Tool names: {tool_names}")
+                # Attach LLM based on provider
+                from mcp_agent.workflows.llm.augmented_llm_anthropic import (
+                    AnthropicAugmentedLLM,
+                )
+                from mcp_agent.workflows.llm.augmented_llm_openai import (
+                    OpenAIAugmentedLLM,
+                )
+
+                if provider == "openai":
+                    llm = await agent.attach_llm(OpenAIAugmentedLLM)
+                else:
+                    llm = await agent.attach_llm(AnthropicAugmentedLLM)
 
                 print(
                     json.dumps(
                         {
                             "type": "progress",
-                            "message": f"Loaded {tool_count} tools",
+                            "message": f"Initialized Agent with {provider}",
                             "percentage": 30,
                         }
                     ),
                     flush=True,
                 )
 
-                print(
-                    json.dumps(
-                        {
-                            "type": "tools_loaded",
-                            "count": tool_count,
-                            "tools": tool_names,
-                        }
-                    ),
-                    flush=True,
-                )
-
-                completed_tasks.append("Loaded research tools")
-                await update_progress(project_dir, 30, "Attaching LLM", completed_tasks)
-
-                # Attach LLM based on provider (model is set in config)
-                print(
-                    json.dumps(
-                        {
-                            "type": "progress",
-                            "message": f"Connecting to {provider} ({model})",
-                            "percentage": 35,
-                        }
-                    ),
-                    flush=True,
-                )
-
-                if provider == "anthropic":
-                    llm = await researcher.attach_llm(AnthropicAugmentedLLM)
-                elif provider == "openai":
-                    llm = await researcher.attach_llm(OpenAIAugmentedLLM)
-                else:
-                    raise ValueError(f"Unsupported provider: {provider}")
-
-                print(
-                    json.dumps(
-                        {
-                            "type": "progress",
-                            "message": f"Connected to {provider}",
-                            "percentage": 40,
-                        }
-                    ),
-                    flush=True,
-                )
-
-                completed_tasks.append("Connected to LLM")
+                completed_tasks.append("Initialized research agent")
                 await update_progress(
-                    project_dir, 40, "Starting research", completed_tasks
+                    project_dir, 30, "Starting research", completed_tasks
                 )
-
-                # Check if this is a resume operation
-                if resume:
-                    print(
-                        json.dumps(
-                            {
-                                "type": "resume_mode",
-                                "message": "Resuming research session",
-                            }
-                        ),
-                        flush=True,
-                    )
-
-                    # Load conversation history
-                    history = await load_conversation_history(project_dir)
-                    if history:
-                        print(
-                            json.dumps(
-                                {
-                                    "type": "history_loaded",
-                                    "message": "Loaded previous conversation history",
-                                }
-                            ),
-                            flush=True,
-                        )
-
-                    # Set request params for continued conversation
-                    from mcp_agent.workflows.llm.augmented_llm import RequestParams
-
-                    request_params = RequestParams(
-                        max_iterations=999999,  # Practically unlimited - agent decides when done
-                        temperature=0.7,
-                        maxTokens=8192,  # Claude's max output tokens per response
-                    )
-
-                    # Skip directly to message loop
-                    await update_progress(
-                        project_dir,
-                        100,
-                        "Resumed - Ready for messages",
-                        completed_tasks,
-                    )
-
-                    # Removed research_fully_completed message to prevent setting status to 'completed'
-                    # This keeps the research in 'in_progress' state while waiting for messages
-
-                    print(
-                        json.dumps(
-                            {
-                                "type": "waiting_for_messages",
-                                "message": "Research resumed. Waiting for messages...",
-                            }
-                        ),
-                        flush=True,
-                    )
-
-                    await message_loop(llm, project_dir, request_params)
-                    return {"success": True, "status": "resumed"}
 
                 print(
                     json.dumps({"type": "research_started", "cwd": project_dir}),
                     flush=True,
                 )
 
-                # Execute research in the project directory
-                import os
+                print(json.dumps({"type": "llm_starting", "topic": topic}), flush=True)
 
-                original_dir = os.getcwd()
-                os.chdir(project_dir)
+                # Process the research request using generate_str
+                from mcp_agent.workflows.llm.augmented_llm import RequestParams
 
-                try:
-                    # Run research using tool-calling loop
-                    print(
-                        json.dumps({"type": "llm_starting", "topic": topic}), flush=True
-                    )
+                request_params = RequestParams(
+                    max_iterations=999999,
+                    temperature=0.7,
+                    maxTokens=8192,
+                )
 
-                    # Use generate() which handles tool calling properly
-                    print(
-                        json.dumps(
-                            {
-                                "type": "progress",
-                                "message": "LLM is researching...",
-                                "percentage": 50,
-                            }
-                        ),
-                        flush=True,
-                    )
+                result = await llm.generate_str(
+                    message=topic,
+                    request_params=request_params,
+                )
 
-                    # Use generate_str() with RequestParams to allow multiple tool-calling turns
-                    from mcp_agent.workflows.llm.augmented_llm import RequestParams
+                completed_tasks.append("Completed web research")
+                await update_progress(
+                    project_dir,
+                    90,
+                    "Research completed",
+                    completed_tasks,
+                )
 
-                    # Effectively unlimited iterations - agent decides when research is complete based on prompt
-                    # maxTokens set to 8192 (Claude's default max output) to avoid Anthropic streaming requirement
-                    request_params = RequestParams(
-                        max_iterations=999999,  # Practically unlimited - agent decides when done
-                        temperature=0.7,
-                        maxTokens=8192,  # Claude's max output tokens per response
-                    )
+                print(
+                    json.dumps(
+                        {
+                            "type": "llm_completed",
+                            "status": "success",
+                        }
+                    ),
+                    flush=True,
+                )
 
-                    # Load user prompt template (REQUIRED)
-                    user_prompt_file = (
-                        Path(__file__).parent / "user-prompt.template.txt"
-                    )
-                    if not user_prompt_file.exists():
-                        raise FileNotFoundError(
-                            f"Required user prompt template not found: {user_prompt_file}"
-                        )
-
-                    user_prompt_template = user_prompt_file.read_text()
-                    prompt_message = user_prompt_template.replace("{topic}", topic)
-
-                    result = await llm.generate_str(
-                        message=prompt_message,
-                        request_params=request_params,
-                    )
-
-                    completed_tasks.append("Completed web research")
-                    await update_progress(
-                        project_dir,
-                        80,
-                        "Creating markdown documentation",
-                        completed_tasks,
-                    )
-
-                    print(
-                        json.dumps(
-                            {
-                                "type": "llm_completed",
-                                "status": "success",
-                            }
-                        ),
-                        flush=True,
-                    )
-
-                    completed_tasks.append("Completed research")
-                    await update_progress(
-                        project_dir, 90, "Finalizing", completed_tasks
-                    )
-
-                    print(
-                        json.dumps(
-                            {
-                                "type": "research_completed",
-                                "status": "success",
-                            }
-                        ),
-                        flush=True,
-                    )
-
-                finally:
-                    os.chdir(original_dir)
-
-                completed_tasks.append("Generated all files")
+                completed_tasks.append("Completed research")
                 await update_progress(project_dir, 100, "Complete", completed_tasks)
 
-                # Emit the final research result as an assistant response so it appears in chat
+                print(
+                    json.dumps(
+                        {
+                            "type": "research_completed",
+                            "status": "success",
+                        }
+                    ),
+                    flush=True,
+                )
+
+                # Emit the final research result
                 print(
                     json.dumps(
                         {
                             "type": "assistant_response",
-                            "message_id": None,  # Initial research has no parent message ID
+                            "message_id": None,
                             "response": result,
                         }
                     )
@@ -1238,7 +1101,7 @@ async def run_research(
                     end="",
                 )
 
-                # Enter message loop to handle follow-up questions
+                # Enter message loop
                 print(
                     json.dumps(
                         {
@@ -1251,9 +1114,12 @@ async def run_research(
                     end="",
                 )
 
-                await message_loop(llm, project_dir, request_params)
+                await message_loop(llm, project_dir)
 
                 return {"success": True, "status": "completed"}
+
+            finally:
+                os.chdir(original_dir)
 
     except Exception as e:
         print(
@@ -1300,6 +1166,16 @@ def main():
     project_dir = sys.argv[2]
     provider = sys.argv[3] if len(sys.argv) > 3 else "anthropic"
     model = sys.argv[4] if len(sys.argv) > 4 else "claude-sonnet-4-5"
+
+    # Handle "auto" model - replace with actual default model for the provider
+    # "auto" is not a valid model name for any LLM provider
+    if model == "auto":
+        if provider == "anthropic":
+            model = "claude-sonnet-4-5"
+        elif provider == "openai":
+            model = "gpt-4o-mini"
+        else:
+            model = "claude-sonnet-4-5"  # Default fallback
 
     # Check for --resume flag
     resume = "--resume" in sys.argv
