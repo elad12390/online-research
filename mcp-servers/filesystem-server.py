@@ -3,11 +3,24 @@
 Simple Filesystem MCP Server
 Built with Python MCP SDK for guaranteed compatibility with OpenAI and Anthropic.
 Provides safe read/write operations for research project directories.
+
+Refactored to follow DRY principle - HTML validation shared with research-agent.py
 """
 
+import sys
 from pathlib import Path
 from typing import Any
 from mcp.server.fastmcp import FastMCP
+
+# Add scripts directory to path for shared utilities
+scripts_dir = Path(__file__).parent.parent / "scripts"
+sys.path.insert(0, str(scripts_dir))
+from utils.html_validator import (  # type: ignore
+    extract_local_links_from_html,
+    check_missing_files_in_project,
+    format_missing_files_error,
+    format_missing_files_warning,
+)
 
 # Initialize FastMCP server
 mcp = FastMCP("filesystem")
@@ -284,73 +297,8 @@ def write_research_metadata(
     return f"✅ Metadata saved successfully!\n\nTitle: {title}\nCategory: {category}\nTags: {', '.join(tags or [])}\n\nThis project will now display as '{title}' in the research portal."
 
 
-def _extract_local_links_from_html(html_content: str) -> set[str]:
-    """Extract local file links from HTML content (href and src attributes)."""
-    import re
-
-    links = set()
-    # Match href="..." and src="..." attributes
-    pattern = r'(?:href|src)=["\']([^"\']+)["\']'
-    matches = re.findall(pattern, html_content, re.IGNORECASE)
-
-    for link in matches:
-        # Skip external URLs, anchors, and data URIs
-        if link.startswith(
-            ("http://", "https://", "mailto:", "#", "data:", "javascript:")
-        ):
-            continue
-        # Skip empty links
-        if not link.strip():
-            continue
-        # Remove query strings and anchors from local links
-        link = link.split("?")[0].split("#")[0]
-        if link:
-            links.add(link)
-
-    return links
-
-
-def _check_missing_files_in_project(project_dir: Path) -> dict[str, list[str]]:
-    """
-    Scan all HTML files in project directory and check for broken local links.
-
-    Returns:
-        Dictionary mapping HTML filenames to lists of missing linked files
-    """
-    missing_files = {}
-
-    # Find all HTML files in the project
-    html_files = list(project_dir.glob("*.html")) + list(project_dir.glob("**/*.html"))
-
-    for html_file in html_files:
-        try:
-            content = html_file.read_text(encoding="utf-8")
-            local_links = _extract_local_links_from_html(content)
-
-            missing_for_file = []
-            for link in local_links:
-                # Resolve the link relative to the HTML file's directory
-                if link.startswith("/"):
-                    # Absolute path from project root
-                    linked_path = project_dir / link.lstrip("/")
-                else:
-                    # Relative path from HTML file location
-                    linked_path = html_file.parent / link
-
-                # Check if the file exists
-                if not linked_path.exists():
-                    missing_for_file.append(link)
-
-            if missing_for_file:
-                # Use relative path from project dir for cleaner output
-                rel_html_path = html_file.relative_to(project_dir)
-                missing_files[str(rel_html_path)] = missing_for_file
-
-        except Exception:
-            # Skip files that can't be read
-            pass
-
-    return missing_files
+# HTML validation functions now imported from utils.html_validator (DRY principle)
+# See scripts/utils/html_validator.py for implementation
 
 
 @mcp.tool()
@@ -436,7 +384,7 @@ def update_research_progress(
     }
 
     # Check for missing files referenced in HTML BEFORE saving progress
-    missing_files = _check_missing_files_in_project(project_dir)
+    missing_files = check_missing_files_in_project(project_dir)
 
     # If trying to mark as complete (>=90%) but there are missing files,
     # cap progress at 85% and refuse to mark complete

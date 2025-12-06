@@ -1,12 +1,13 @@
 /**
  * Claude CLI Executor
  * Simple wrapper to execute research using Claude CLI with MCP tools
+ * 
+ * Refactored to use shared constants (DRY principle)
  */
 
 import { spawn } from 'child_process'
-import * as path from 'path'
-import * as fs from 'fs'
 import { researchLogger } from '@/lib/logger'
+import { DEPTH_INSTRUCTIONS, STYLE_INSTRUCTIONS, HTML_BASE_STYLES, CLI_DEFAULTS } from './constants'
 
 interface ClaudeExecutorOptions {
   topic: string
@@ -23,24 +24,15 @@ interface ClaudeExecutorOptions {
 }
 
 export class ClaudeCliExecutor {
+  /**
+   * Build prompt using shared constants (DRY principle)
+   */
   private buildPrompt(topic: string, depth: string, style: string): string {
-    const depthInstructions = {
-      quick: 'Provide a concise 15-20 minute research summary',
-      standard: 'Provide a comprehensive 45-60 minute research',
-      deep: 'Provide an exhaustive in-depth research with multiple perspectives',
-    }
-
-    const styleInstructions = {
-      comprehensive: 'Create detailed, well-structured documentation with multiple sections',
-      comparing: 'Focus on comparisons and contrasts between options',
-      practical: 'Focus on practical, actionable insights and implementation',
-    }
-
     return `You are a professional research agent conducting thorough research on a topic.
 
 TOPIC: ${topic}
-DEPTH: ${depthInstructions[depth as keyof typeof depthInstructions]}
-STYLE: ${styleInstructions[style as keyof typeof styleInstructions]}
+DEPTH: ${DEPTH_INSTRUCTIONS[depth as keyof typeof DEPTH_INSTRUCTIONS]}
+STYLE: ${STYLE_INSTRUCTIONS[style as keyof typeof STYLE_INSTRUCTIONS]}
 
 INSTRUCTIONS:
 
@@ -65,33 +57,12 @@ INSTRUCTIONS:
        <meta name="viewport" content="width=device-width, initial-scale=1.0">
        <title>Your Title</title>
        <style>
-           body {
-               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-               line-height: 1.6;
-               max-width: 900px;
-               margin: 0 auto;
-               padding: 2rem;
-               color: #333;
-           }
-           h1 { color: #1a1a1a; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.3rem; }
-           h2 { color: #2a2a2a; margin-top: 2rem; }
-           h3 { color: #3a3a3a; margin-top: 1.5rem; }
-           table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-           th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
-           th { background-color: #f5f5f5; font-weight: 600; }
-           a { color: #0066cc; text-decoration: none; }
-           a:hover { text-decoration: underline; }
-           code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; }
-           pre { background: #f5f5f5; padding: 1rem; border-radius: 6px; overflow-x: auto; }
-           blockquote { border-left: 4px solid #0066cc; margin: 1rem 0; padding-left: 1rem; color: #666; }
-           ul, ol { margin: 1rem 0; padding-left: 2rem; }
+           ${HTML_BASE_STYLES}
        </style>
    </head>
    <body>
        <h1>Your Title Here</h1>
-       
        <!-- Your content here -->
-       
    </body>
    </html>
 
@@ -114,7 +85,7 @@ Begin your research now. Use MCP tools to gather information, then create well-o
   }
 
   async execute(options: ClaudeExecutorOptions): Promise<void> {
-    const { topic, projectDir, depth, style, maxTurns = 30, model = 'sonnet' } = options
+    const { topic, projectDir, depth, style, maxTurns, model = CLI_DEFAULTS.DEFAULT_MODEL } = options
     const correlationId = Date.now().toString(36)
 
     researchLogger.info('Starting Claude CLI execution', {
@@ -165,12 +136,16 @@ Begin your research now. Use MCP tools to gather information, then create well-o
       '-p', // Print mode (non-interactive)
       '--verbose', // Verbose output
       '--model', model,
-      '--max-turns', maxTurns.toString(),
       '--output-format', 'stream-json',
       '--mcp-config', mcpConfig,
       '--allowedTools', allowedTools,
       '--setting-sources', '', // Don't load any filesystem settings
     ]
+
+    // Only add --max-turns if explicitly provided (avoid artificial limits)
+    if (maxTurns !== undefined) {
+      args.push('--max-turns', maxTurns.toString())
+    }
 
     researchLogger.debug('Spawning Claude CLI', {
       correlationId,

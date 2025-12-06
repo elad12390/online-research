@@ -145,9 +145,11 @@ class Logger {
   }
 }
 
+import { config } from '@/lib/config'
+
 // Create singleton instances for different services
-export const researchLogger = new Logger("research-wizard", process.env.DEBUG === "true")
-export const opencodeLogger = new Logger("opencode", process.env.DEBUG === "true")
-export const databaseLogger = new Logger("database", process.env.DEBUG === "true")
+export const researchLogger = new Logger("research-wizard", config.debug)
+export const opencodeLogger = new Logger("opencode", config.debug)
+export const databaseLogger = new Logger("database", config.debug)
 
 export default Logger

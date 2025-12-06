@@ -6,6 +6,7 @@
 import Database from "better-sqlite3"
 import * as path from "path"
 import * as fs from "fs"
+import { CLI_DEFAULTS } from "./constants"
 
 export interface Research {
   id: string
@@ -292,7 +293,7 @@ export class ResearchDatabase {
     }))
   }
 
-  getRecentActivities(limit: number = 50): Activity[] {
+  getRecentActivities(limit: number = CLI_DEFAULTS.RECENT_ACTIVITIES_LIMIT): Activity[] {
     const stmt = this.db.prepare(
       "SELECT id, agentId, timestamp, action, description, metadata FROM activities ORDER BY timestamp DESC LIMIT ?"
     )

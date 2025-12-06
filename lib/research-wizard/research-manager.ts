@@ -1,6 +1,11 @@
 /**
  * Research Manager
  * Orchestrates research projects using Claude Agent SDK and manages the workflow
+ * 
+ * Refactored to follow KISS and SRP principles:
+ * - Stream parsing logic extracted to stream-parser.ts
+ * - Constants extracted to constants.ts
+ * - Main class focused on orchestration only
  */
 
 import * as path from "path"
@@ -9,6 +14,12 @@ import { spawn } from "child_process"
 import { ResearchDatabase } from "./research-wizard-db"
 import { v4 as uuidv4 } from "uuid"
 import { researchLogger } from "@/lib/logger"
+import { 
+  DEPTH_INSTRUCTIONS, 
+  STYLE_INSTRUCTIONS, 
+  HTML_BASE_STYLES,
+} from "./constants"
+import { apiKeys, validateProviderKey, getProcessEnv } from "@/lib/config"
 
 interface ResearchConfig {
   topic: string
@@ -236,16 +247,8 @@ export class ResearchManager {
         model = provider === "anthropic" ? "claude-sonnet-4-5" : "gpt-4o-mini"
       }
       
-      // Check for appropriate API key based on provider
-      if (provider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {
-        throw new Error("ANTHROPIC_API_KEY environment variable is not set. Please authenticate at /auth")
-      }
-      if (provider === "openai" && !process.env.OPENAI_API_KEY) {
-        throw new Error("OPENAI_API_KEY environment variable is not set. Please set it in .env.local")
-      }
-      if (provider === "google" && !process.env.GOOGLE_API_KEY) {
-        throw new Error("GOOGLE_API_KEY environment variable is not set. Please set it in .env.local")
-      }
+      // Check for appropriate API key based on provider (using centralized config)
+      validateProviderKey(provider as 'anthropic' | 'openai' | 'google')
 
       // Update agent status
       this.db.updateAgentStatus(agentId, "running")
@@ -280,15 +283,7 @@ export class ResearchManager {
       }
       
       const pythonProcess = spawn(venvPython, args, {
-        env: {
-          ...process.env,
-          // Pass all provider API keys
-          ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-          OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-          GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-          // Pass SearXNG URL for web-research-assistant MCP server
-          SEARXNG_BASE_URL: process.env.SEARXNG_BASE_URL || 'http://localhost:8847/search',
-        },
+        env: getProcessEnv(),  // Use centralized config for environment
         cwd: projectRoot, // Project root for mcp_agent.config.yaml
       })
 
@@ -935,27 +930,17 @@ export class ResearchManager {
 
   /**
    * Build the research prompt based on configuration
+   * Uses shared constants from constants.ts (DRY principle)
    */
-  private buildResearchPrompt(config: ResearchConfig, projectDir: string): string {
-    const depthInstructions = {
-      quick: "Provide a concise 15-20 minute research summary",
-      standard: "Provide a comprehensive 45-60 minute research",
-      deep: "Provide an exhaustive in-depth research with multiple perspectives",
-    }
-
-    const styleInstructions = {
-      comprehensive: "Create detailed, well-structured documentation with multiple sections",
-      comparing: "Focus on comparisons and contrasts between options",
-      practical: "Focus on practical, actionable insights and implementation",
-    }
+  private buildResearchPrompt(config: ResearchConfig): string {
 
     return `
 You are a research agent tasked with conducting thorough research on a topic.
 
 TOPIC: ${config.topic}
 ${config.focus ? `FOCUS: ${config.focus}` : ""}
-DEPTH: ${depthInstructions[config.depth]}
-STYLE: ${styleInstructions[config.style || "comprehensive"]}
+DEPTH: ${DEPTH_INSTRUCTIONS[config.depth]}
+STYLE: ${STYLE_INSTRUCTIONS[config.style || "comprehensive"]}
 
 ‼️ CRITICAL FILE FORMAT REQUIREMENT ‼️
 YOU MUST CREATE HTML FILES ONLY - NO MARKDOWN FILES ALLOWED!
@@ -1056,7 +1041,7 @@ Begin your research now. Use web-research-assistant tools to gather information,
       )}.html`
       const filePath = path.join(projectDir, fileName)
 
-      // Wrap content in HTML structure
+      // Wrap content in HTML structure using shared styles (DRY principle)
       const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1064,24 +1049,7 @@ Begin your research now. Use web-research-assistant tools to gather information,
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${section.title}</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 2rem;
-            color: #333;
-        }
-        h1 { color: #1a1a1a; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.3rem; }
-        h2 { color: #2a2a2a; margin-top: 2rem; }
-        h3 { color: #3a3a3a; margin-top: 1.5rem; }
-        table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-        th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
-        th { background-color: #f5f5f5; font-weight: 600; }
-        a { color: #0066cc; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; }
-        pre { background: #f5f5f5; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+        ${HTML_BASE_STYLES}
     </style>
 </head>
 <body>

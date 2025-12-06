@@ -4,10 +4,10 @@
  */
 
 import chokidar from 'chokidar';
-import path from 'path';
 import type { FSWatcher } from 'chokidar';
+import { config } from '@/lib/config';
 
-const RESEARCH_DIR = process.env.RESEARCH_DIR || process.cwd();
+const RESEARCH_DIR = config.researchDir;
 
 let watcher: FSWatcher | null = null;
 let watchers: Set<(event: string, filePath: string) => void> = new Set();

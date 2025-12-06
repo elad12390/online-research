@@ -175,13 +175,15 @@ export function saveTokenToEnvFile(token: string): { success: boolean; error?: s
   }
 }
 
+import { setAnthropicKey, getAnthropicKey } from '@/lib/config'
+
 /**
  * Save token to environment (for current process)
  * Note: This only sets for the current Node.js process
  * For persistence, save to .env file or system config
  */
 export function setTokenInEnvironment(token: string) {
-  process.env.ANTHROPIC_API_KEY = token
+  setAnthropicKey(token)
   
   // Also save to .env.local for persistence
   saveTokenToEnvFile(token)
@@ -191,5 +193,5 @@ export function setTokenInEnvironment(token: string) {
  * Get current token from environment
  */
 export function getCurrentToken(): string | undefined {
-  return process.env.ANTHROPIC_API_KEY
+  return getAnthropicKey()
 }

@@ -2,6 +2,8 @@
 """
 Research Agent using mcp-agent
 Executes research tasks with MCP tools and multiple LLM providers
+
+Refactored to follow DRY principle - HTML validation shared with filesystem-server.py
 """
 
 import asyncio
@@ -17,6 +19,18 @@ from io import StringIO
 from mcp_agent.app import MCPApp
 from mcp_agent.agents.agent import Agent
 from mcp_agent.config import Settings, LoggerSettings
+
+# Import shared utilities (DRY principle)
+from utils.html_validator import check_missing_files_in_project  # type: ignore
+from utils.constants import (  # type: ignore
+    DEPTH_INSTRUCTIONS,
+    STYLE_INSTRUCTIONS,
+    DEFAULT_MODELS,
+    PROGRESS_LIMITS,
+    get_default_model,
+    get_depth_instruction,
+    get_style_instruction,
+)
 
 
 def infer_tool_from_output(output: str) -> str:
@@ -301,48 +315,8 @@ class ToolCallHandler(logging.Handler):
             self.handleError(record)
 
 
-def _extract_local_links_from_html(html_content: str) -> set:
-    """Extract local file links from HTML content (href and src attributes)."""
-    import re
-
-    links = set()
-    pattern = r'(?:href|src)=["\']([^"\']+)["\']'
-    matches = re.findall(pattern, html_content, re.IGNORECASE)
-    for link in matches:
-        if link.startswith(
-            ("http://", "https://", "mailto:", "#", "data:", "javascript:")
-        ):
-            continue
-        if not link.strip():
-            continue
-        link = link.split("?")[0].split("#")[0]
-        if link:
-            links.add(link)
-    return links
-
-
-def _check_missing_files_in_project(project_dir: Path) -> dict:
-    """Scan all HTML files in project directory and check for broken local links."""
-    missing_files = {}
-    html_files = list(project_dir.glob("*.html")) + list(project_dir.glob("**/*.html"))
-    for html_file in html_files:
-        try:
-            content = html_file.read_text(encoding="utf-8")
-            local_links = _extract_local_links_from_html(content)
-            missing_for_file = []
-            for link in local_links:
-                if link.startswith("/"):
-                    linked_path = project_dir / link.lstrip("/")
-                else:
-                    linked_path = html_file.parent / link
-                if not linked_path.exists():
-                    missing_for_file.append(link)
-            if missing_for_file:
-                rel_html_path = html_file.relative_to(project_dir)
-                missing_files[str(rel_html_path)] = missing_for_file
-        except Exception:
-            pass
-    return missing_files
+# HTML validation functions now imported from utils.html_validator (DRY principle)
+# See scripts/utils/html_validator.py for implementation
 
 
 async def update_progress(
@@ -361,11 +335,11 @@ async def update_progress(
     actual_task = current_task
     task_description = f"Currently working on: {current_task}"
 
-    if percentage >= 90:
-        missing_files = _check_missing_files_in_project(project_path)
+    if percentage >= PROGRESS_LIMITS["COMPLETION_THRESHOLD"]:
+        missing_files = check_missing_files_in_project(project_path)
         if missing_files:
             total_missing = sum(len(links) for links in missing_files.values())
-            actual_percentage = 85  # Cap at 85%
+            actual_percentage = PROGRESS_LIMITS["BLOCKED_PERCENTAGE"]
             actual_task = "BLOCKED: Missing files"
             task_description = (
                 f"Cannot complete - {total_missing} referenced files not created"
@@ -446,7 +420,7 @@ async def message_loop(llm, project_dir: str):
     last_message_id = None
     project_path = Path(project_dir)
     consecutive_errors = 0
-    max_consecutive_errors = 5  # Exit after 5 consecutive errors
+    max_consecutive_errors = PROGRESS_LIMITS["MAX_CONSECUTIVE_ERRORS"]
 
     print(
         json.dumps(
@@ -558,7 +532,7 @@ async def message_loop(llm, project_dir: str):
                         request_params = RequestParams(
                             max_iterations=999999,
                             temperature=0.7,
-                            maxTokens=8192,
+                            maxTokens=16384,
                         )
 
                         response = await llm.generate_str(
@@ -889,20 +863,6 @@ async def run_research(
     except OSError:
         pass
 
-    # Build research instruction
-    depth_instructions = {
-        "quick": "Provide a concise 15-20 minute research summary with 5-10 tool calls",
-        "standard": "Provide a comprehensive 45-60 minute research with 15-20 tool calls",
-        "deep": "Provide an exhaustive in-depth research with 30-40 tool calls",
-        "unlimited": "Research as thoroughly as needed - NO LIMIT on tool calls or depth",
-    }
-
-    style_instructions = {
-        "comprehensive": "Create detailed, well-structured documentation with multiple sections",
-        "comparing": "Focus on comparisons and contrasts between options",
-        "practical": "Focus on practical, actionable insights and implementation",
-    }
-
     # Load instruction prompt from file
     try:
         prompts_dir = Path(__file__).parent / "prompts"
@@ -910,12 +870,11 @@ async def run_research(
     except Exception as e:
         raise RuntimeError(f"Failed to load prompt file: {e}")
 
+    # Build research instruction using shared constants (DRY principle)
     instruction = instruction_template.format(
         topic=topic,
-        depth_instruction=depth_instructions.get(depth, depth_instructions["standard"]),
-        style_instruction=style_instructions.get(
-            style, style_instructions["comprehensive"]
-        ),
+        depth_instruction=get_depth_instruction(depth),
+        style_instruction=get_style_instruction(style),
         current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S %Z"),
     )
 
@@ -1035,7 +994,7 @@ async def run_research(
                 request_params = RequestParams(
                     max_iterations=999999,
                     temperature=0.7,
-                    maxTokens=8192,
+                    maxTokens=16384,
                 )
 
                 result = await llm.generate_str(

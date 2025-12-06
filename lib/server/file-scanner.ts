@@ -1,6 +1,8 @@
 /**
  * Research Project File Scanner
  * Scans the research directory and returns all projects with metadata
+ * 
+ * Refactored to use centralized config module
  */
 
 import { readdir, readFile, stat, rm } from 'fs/promises';
@@ -8,16 +10,17 @@ import path from 'path';
 import { parseMetadata } from './markdown-parser';
 import type { ResearchProject, ResearchMetadata, ResearchProgress } from '@/lib/types';
 import { ResearchDatabase } from '@/lib/research-wizard/research-wizard-db';
+import { config } from '@/lib/config';
 
 /**
- * Get research directory from environment variable or use default
+ * Get research directory from centralized config
  * RESEARCH_DIR can be an absolute path like /Users/username/research
  */
 function getResearchDir(): string {
-  const researchDir = process.env.RESEARCH_DIR;
+  const researchDir = config.researchDir;
   
-  if (!researchDir) {
-    // Try to use a sibling directory named 'research'
+  if (researchDir === './research-projects') {
+    // Using default - try to use a sibling directory named 'research'
     const projectRoot = process.cwd();
     const parentDir = path.dirname(projectRoot);
     const defaultResearchDir = path.join(parentDir, 'research');
@@ -53,8 +56,8 @@ export async function scanResearchProjects(): Promise<Record<string, ResearchPro
     // Try 1: In RESEARCH_DIR
     const dbPathInResearchDir = path.join(RESEARCH_DIR, 'research-wizard.db');
     
-    // Try 2: Environment variable or default
-    const dbPath = process.env.DB_PATH || dbPathInResearchDir;
+    // Try 2: Centralized config or default
+    const dbPath = config.dbPath || dbPathInResearchDir;
     
     const db = new ResearchDatabase(dbPath);
     const researches = db.getAllResearches();
